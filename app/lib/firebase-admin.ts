@@ -1,5 +1,6 @@
 // Firebase Admin SDK — server-only, never import this on the client.
-// Used to verify Firebase ID tokens inside Next.js API route handlers.
+// Used to verify Firebase ID tokens and read/write Firestore inside
+// Next.js API route handlers.
 //
 // SETUP (one-time)
 // ----------------
@@ -12,11 +13,12 @@
 // Get these values from Firebase Console → Project Settings → Service Accounts
 // → Generate new private key → open the downloaded JSON.
 //
-// On Vercel, paste the private key exactly as shown (with literal \n characters);
-// Vercel handles the escaping automatically.
+// On your host, paste the private key exactly as shown (with literal \n
+// characters); the platform handles the escaping automatically.
 
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 function initAdmin(): void {
   if (getApps().length > 0) return;
@@ -62,4 +64,12 @@ export async function verifyIdToken(authHeader: string | null | undefined): Prom
   } catch {
     return null;
   }
+}
+
+/**
+ * Lazily return the Admin Firestore instance. Called inside request handlers
+ * so it never runs at import time (keeps local dev without credentials safe).
+ */
+export function getAdminDb() {
+  return getFirestore();
 }
