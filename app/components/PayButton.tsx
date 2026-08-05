@@ -15,6 +15,18 @@ interface CartItem {
   quantity: number;
 }
 
+interface AddressInput {
+  fullName?: string;
+  phone?: string;
+  email?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+}
+
 interface PayUser {
   name?: string;
   email?: string;
@@ -23,9 +35,13 @@ interface PayUser {
 
 interface PayButtonProps {
   items: CartItem[];
-  addressId: string;
+  address: AddressInput;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
   user: PayUser;
   idToken: string; // Firebase ID token — get via await user.getIdToken()
+  totalRupees: number; // shown on the button label (server amount is authoritative)
   disabled?: boolean;
   onPaid?: (orderId: string) => void;
   onError?: (message: string) => void;
@@ -36,9 +52,13 @@ interface PayButtonProps {
 // checkout modal on THIS page, then verifies the payment server-side.
 export default function PayButton({
   items,
-  addressId,
+  address,
+  customerName,
+  customerPhone,
+  customerEmail,
   user,
   idToken,
+  totalRupees,
   disabled,
   onPaid,
   onError,
@@ -48,8 +68,14 @@ export default function PayButton({
 
   async function placeOrderAndPay() {
     setError(null);
-    if (!addressId) {
-      const msg = "Please select a shipping address.";
+    if (!customerName.trim() || !customerPhone.trim()) {
+      const msg = "Please fill in name and phone.";
+      setError(msg);
+      onError?.(msg);
+      return;
+    }
+    if (!address.addressLine1?.trim() || !address.city?.trim() || !address.postalCode?.trim()) {
+      const msg = "Please fill in address, city, and postal code.";
       setError(msg);
       onError?.(msg);
       return;
@@ -63,7 +89,13 @@ export default function PayButton({
           "Content-Type": "application/json",
           Authorization: `Bearer ${idToken}`,
         },
-        body: JSON.stringify({ items, addressId }),
+        body: JSON.stringify({
+          items,
+          address,
+          customerName,
+          customerPhone,
+          customerEmail,
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -80,11 +112,11 @@ export default function PayButton({
         description: "Book order",
         order_id: razorpayOrderId,
         prefill: {
-          name: user.name || "",
-          email: user.email || "",
-          contact: user.phone || "",
+          name: customerName || user.name || "",
+          email: customerEmail || user.email || "",
+          contact: customerPhone || user.phone || "",
         },
-        theme: { color: "#1f2937" }, // match your scholarly palette
+        theme: { color: "#1A1A1A" }, // match your scholarly palette
         handler: async (response: any) => {
           // 3. Verify the signature server-side and mark the order Paid.
           const v = await fetch("/api/payments/verify", {
@@ -133,11 +165,18 @@ export default function PayButton({
         onClick={placeOrderAndPay}
         disabled={disabled || loading}
         aria-label="Place order and pay with Razorpay"
-        className="inline-flex w-full items-center justify-center rounded-lg bg-gray-900 px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full bg-[#1A1A1A] hover:bg-[#7D5A34] text-white text-xs font-bold uppercase tracking-widest py-4 transition-colors rounded-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
-        {loading ? "Starting…" : "Place Order & Pay"}
+        {loading ? "Processing…" : `Place Order & Pay ₹${totalRupees.toFixed(2)}`}
       </button>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="mt-2 text-xs text-red-700 bg-red-50 border-l-2 border-red-500 p-3 rounded-sm leading-relaxed">
+          {error}
+        </p>
+      )}
+      <p className="text-[10px] text-[#1A1A1A]/50 italic text-center leading-relaxed mt-3">
+        You will be charged now via Razorpay. Your order is confirmed instantly on successful payment.
+      </p>
     </div>
   );
 }

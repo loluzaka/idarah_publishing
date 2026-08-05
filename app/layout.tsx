@@ -5,6 +5,7 @@ import HeaderWrapper from "./components/HeaderWrapper";
 import { AuthProvider } from "@/app/context/AuthContext";
 import { buildMetadata, organizationJsonLd, jsonLdString } from "@/app/lib/seo";
 import { Toaster } from "react-hot-toast";
+import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair" });
@@ -27,6 +28,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: jsonLdString(organizationJsonLd()) }}
+        />
+        {/* Razorpay Checkout — loaded once, used by PayButton */}
+        <Script
+          src="https://checkout.razorpay.com/v1/checkout.js"
+          strategy="afterInteractive"
         />
         <AuthProvider>
           <HeaderWrapper />

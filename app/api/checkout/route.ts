@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { verifyIdToken, getAdminDb } from "@/app/lib/firebase-admin";
-import { client } from "@/app/lib/sanityClient";
+import { client } from "@/app/sanityClient";
 import { calculateShipping } from "@/app/lib/shipping";
 
 // Razorpay is initialised once per cold start with your server-side keys.
@@ -10,8 +10,20 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET!,
 });
 
+interface AddressInput {
+  fullName?: string;
+  phone?: string;
+  email?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+}
+
 // POST /api/checkout
-// Body: { items: [{ bookId, quantity }], addressId }
+// Body: { items: [{ bookId, quantity }], address: AddressInput, customerName, customerPhone, customerEmail }
 // Header: Authorization: Bearer <firebase id token>
 //
 // Straight-payment flow (no admin verification):
@@ -30,18 +42,31 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const { items, addressId } = await req.json();
+    const { items, address, customerName, customerPhone, customerEmail } =
+      await req.json();
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "cart is empty" }, { status: 400 });
     }
-    if (!addressId) {
-      return NextResponse.json({ error: "select a shipping address" }, { status: 400 });
+
+    // 2. Validate the address (mirrors the old client-side required check).
+    const addr = (address || {}) as AddressInput;
+    if (
+      !customerName?.trim() ||
+      !customerPhone?.trim() ||
+      !addr.addressLine1?.trim() ||
+      !addr.city?.trim() ||
+      !addr.postalCode?.trim()
+    ) {
+      return NextResponse.json(
+        { error: "Please fill in name, phone, address, city, and postal code." },
+        { status: 400 }
+      );
     }
 
-    // 2. Fetch real prices + weights from Sanity. NEVER use client-supplied prices.
+    // 3. Fetch real prices + weights from Sanity. NEVER use client-supplied prices.
     const ids = items.map((i: any) => i.bookId);
     const books = await client.fetch(
-      `*[_id in $ids]{ _id, title, price, weight }`,
+      `*[_type == "book" && _id in $ids]{ _id, title, price, weightGrams }`,
       { ids }
     );
     const byId = new Map<string, any>(books.map((b: any) => [b._id, b]));
@@ -69,29 +94,31 @@ export async function POST(req: Request) {
       });
       shippingItems.push({
         quantity: qty,
-        weightGrams: book.weight == null ? null : Number(book.weight),
+        weightGrams: book.weightGrams == null ? null : Number(book.weightGrams),
       });
     }
     subtotal = +subtotal.toFixed(2);
 
-    // 3. Weight-based shipping (India Post Gyan Post). Over 5 kg → requires a quote.
+    // 4. Weight-based shipping (India Post Gyan Post). Over 5 kg → requires a quote.
     const shippingCalc = calculateShipping(shippingItems);
     if (shippingCalc.requiresQuote) {
       return NextResponse.json(
-        { error: shippingCalc.message || "shipping requires a quote for this weight" },
+        { error: "Your order exceeds 5 kg. Please contact us via WhatsApp for institutional or bulk shipping." },
         { status: 400 }
       );
     }
     const shipping = shippingCalc.cost as number;
 
-    // 4. User discount rate from Firestore (admin-set, per your discounts model).
+    // 5. User discount rate from Firestore.
+    //    Stored as a percentage (e.g. 10 == 10%) per your UI; handle both formats.
     const db = getAdminDb();
     const userSnap = await db.collection("users").doc(uid).get();
     const userData = userSnap.data() || {};
-    const discountRate = Number(userData.discountRate) || 0; // e.g. 0.10 = 10%
+    const rawRate = Number(userData.discountRate) || 0;
+    const discountRate = rawRate > 1 ? rawRate / 100 : rawRate; // 10 -> 0.10
     const discount = +(subtotal * discountRate).toFixed(2);
 
-    // 5. Tax. Books are GST-nil/0% in India — adjust if your catalogue changes.
+    // 6. Tax. Books are GST-nil/0% in India — adjust if your catalogue changes.
     const tax = 0;
 
     const total = +(subtotal - discount + shipping + tax).toFixed(2);
@@ -100,24 +127,34 @@ export async function POST(req: Request) {
     }
     const amountPaise = Math.round(total * 100);
 
-    // 6. Resolve the shipping address from the user's saved addresses.
-    const addresses: any[] = userData.addresses || [];
-    const address = addresses.find((a: any) => a.id === addressId);
-    if (!address) {
-      return NextResponse.json({ error: "address not found" }, { status: 400 });
-    }
+    // 7. Build the full address record (merge form fields + passed address).
+    const fullAddress = {
+      fullName: customerName,
+      phone: customerPhone,
+      email: customerEmail || addr.email || "",
+      addressLine1: addr.addressLine1,
+      addressLine2: addr.addressLine2 || "",
+      city: addr.city,
+      state: addr.state || "",
+      postalCode: addr.postalCode,
+      country: addr.country || "India",
+    };
 
-    // 7. Create the Firestore order (Pending Payment).
+    // 8. Create the Firestore order (Pending Payment).
     const orderRef = db.collection("orders").doc();
+    const orderId = orderRef.id;
     await orderRef.set({
-      id: orderRef.id,
+      id: orderId,
       uid,
+      customerName,
+      customerPhone,
+      customerEmail,
       items: lineItems,
-      address,
+      address: fullAddress,
       subtotal,
       discount,
-      discountRate,
-      shipping,
+      discountRate: rawRate, // store in your existing format (percent)
+      shippingCost: shipping,
       shippingWeight: shippingCalc.totalWeight,
       tax,
       total,
@@ -125,18 +162,18 @@ export async function POST(req: Request) {
       createdAt: new Date(),
     });
 
-    // 8. Create the Razorpay order tied to this order.
+    // 9. Create the Razorpay order tied to this order.
     const rzpOrder = await razorpay.orders.create({
       amount: amountPaise,
       currency: "INR",
-      receipt: orderRef.id,
-      notes: { orderId: orderRef.id, uid },
+      receipt: orderId,
+      notes: { orderId, uid },
     });
 
     await orderRef.update({ razorpayOrderId: rzpOrder.id });
 
     return NextResponse.json({
-      orderId: orderRef.id,
+      orderId,
       razorpayOrderId: rzpOrder.id,
       amount: rzpOrder.amount, // paise
     });

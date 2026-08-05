@@ -6,10 +6,9 @@ import { useAuth } from '@/app/context/AuthContext';
 import { CartItem, readCart, clearCart, cartSubtotal } from '@/app/lib/cart';
 import { client } from '@/app/sanityClient';
 import { calculateShipping, PACKAGING_WEIGHT_GRAMS } from '@/app/lib/shipping';
-import { createOrder } from '@/app/lib/orders';
 import { useUserProfile } from '@/app/hooks/useUserProfile';
-import { customerPrice } from '@/app/lib/pricing';
-import { ShoppingBag, Download, MessageCircle, Home, Package, AlertCircle } from 'lucide-react';
+import { ShoppingBag, Download, MessageCircle, Home, Package, AlertCircle, CheckCircle } from 'lucide-react';
+import PayButton from '@/app/components/PayButton';
 
 const WHATSAPP_NUMBER = '919810173618';
 
@@ -37,16 +36,18 @@ export default function CheckoutPage() {
   const [state, setState] = useState('');
   const [postalCode, setPostalCode] = useState('');
 
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [idToken, setIdToken] = useState('');
   const [orderComplete, setOrderComplete] = useState(false);
   const [generatedOrderId, setGeneratedOrderId] = useState('');
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [paidAmount, setPaidAmount] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
     else if (user) {
       setCustomerName(user.displayName || '');
       setCustomerEmail(user.email || '');
+      // Get a fresh Firebase ID token for the checkout API call.
+      user.getIdToken().then(setIdToken).catch(() => setIdToken(''));
     }
   }, [user, authLoading, router]);
 
@@ -87,9 +88,16 @@ export default function CheckoutPage() {
   const postageCost = shipping.postageCost ?? 0;
   const handlingCharge = shipping.handlingCharge ?? 0;
   const shippingCost = shipping.cost ?? 0; // postage + handling
-  const estimatedTotal = subtotal + shippingCost;
+  const discountAmount = useMemo(() => {
+    const rate = discountRate > 1 ? discountRate / 100 : discountRate;
+    return +(subtotal * rate).toFixed(2);
+  }, [subtotal, discountRate]);
+  const estimatedTotal = useMemo(
+    () => +(subtotal - discountAmount + shippingCost).toFixed(2),
+    [subtotal, discountAmount, shippingCost]
+  );
 
-  const handleDownloadQuotation = () => {
+  const handleDownloadInvoice = () => {
     if (!generatedOrderId) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -98,14 +106,13 @@ export default function CheckoutPage() {
     const html = `
 <!DOCTYPE html>
 <html><head>
-<title>Quotation ${generatedOrderId}</title>
+<title>Invoice ${generatedOrderId}</title>
 <style>
   body { font-family: 'Georgia', serif; padding: 40px; color: #1a1a1a; line-height: 1.5; max-width: 800px; margin: 0 auto; }
   .header { border-bottom: 2px solid #1a1a1a; padding-bottom: 12px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
   .brand h1 { font-size: 22px; margin: 0; }
   .brand p { color: #7d5a34; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin: 4px 0 0; }
   .meta { text-align: right; font-size: 11px; }
-  .watermark { position: fixed; top: 45%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 96px; color: rgba(125,90,52,0.08); font-weight: bold; letter-spacing: 8px; pointer-events: none; z-index: -1; }
   .section { margin: 24px 0; font-family: sans-serif; font-size: 12px; }
   .section h3 { font-family: 'Georgia', serif; font-size: 14px; font-weight: normal; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 8px; }
   table { width: 100%; border-collapse: collapse; margin: 30px 0; }
@@ -119,9 +126,7 @@ export default function CheckoutPage() {
   .footer { border-top: 1px dashed #ccc; padding-top: 20px; margin-top: 40px; font-size: 10px; font-style: italic; color: #666; text-align: center; }
   @media print { .no-print { display: none; } }
 </style>
-</head>
-<body>
-  <div class="watermark">PENDING VERIFICATION</div>
+</head><body>
   <div class="header">
     <div class="brand">
       <h1>Idarah-i Adabiyat-i Dilli</h1>
@@ -133,7 +138,7 @@ export default function CheckoutPage() {
     </div>
   </div>
 
-  <div class="status">Quotation · Pending Verification · Not a Tax Invoice</div>
+  <div class="status">Paid · Tax Invoice</div>
 
   <div class="section">
     <h3>Customer</h3>
@@ -171,23 +176,18 @@ export default function CheckoutPage() {
 
   <div class="totals">
     <div class="totals-row"><span>Subtotal</span><span>₹${subtotal}</span></div>
-    ${discountRate > 0 ? `<div class="totals-row" style="color:#7d5a34"><span>Customer tier discount applied</span><span>${discountRate}%</span></div>` : ''}
-    <div class="totals-row">
-      <span>Shipping (India Post — Gyan Post, ${shipping.totalWeight}g)</span>
-      <span>${shipping.postageCost != null ? '₹' + shipping.postageCost : 'To be quoted'}</span>
-    </div>
-    ${!shipping.requiresQuote ? `<div class="totals-row"><span>Handling &amp; Packaging</span><span>₹${handlingCharge}</span></div>` : ''}
-    <div class="totals-row final"><span>Estimated Total</span><span>₹${estimatedTotal}</span></div>
+    ${discountAmount > 0 ? `<div class="totals-row" style="color:#7d5a34"><span>Discount (${discountRate}%)</span><span>-₹${discountAmount}</span></div>` : ''}
+    <div class="totals-row"><span>Shipping (India Post — Gyan Post, ${shipping.totalWeight}g)</span><span>₹${postageCost}</span></div>
+    <div class="totals-row"><span>Handling &amp; Packaging</span><span>₹${handlingCharge}</span></div>
+    <div class="totals-row final"><span>Total Paid</span><span>₹${paidAmount}</span></div>
   </div>
 
   <div class="footer">
-    This quotation is provisional. The final invoice will be issued after order verification.
-    Shipping via India Post Gyan Post; delivery timelines depend on postal regions.
+    Payment received via Razorpay. Shipping via India Post Gyan Post.
   </div>
 
   <script>window.onload = function() { window.print(); }</script>
-</body>
-</html>`;
+</body></html>`;
 
     printWindow.document.open();
     printWindow.document.write(html);
@@ -196,78 +196,21 @@ export default function CheckoutPage() {
 
   const handleOpenWhatsApp = () => {
     if (!generatedOrderId) return;
-    const message = `Assalamu Alaikum.\n\nI have submitted Order #${generatedOrderId} through the website.\n\nName: ${customerName}\n\nPlease verify the order.\n\nThank you.`;
+    const message = `Assalamu Alaikum.\n\nI have placed and paid for Order #${generatedOrderId} through the website.\n\nName: ${customerName}\n\nPlease confirm dispatch details.\n\nThank you.`;
     window.open(`https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=${encodeURIComponent(message)}`, '_blank');
   };
 
-  const handleSubmitOrderRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isProcessing || !user) return;
-
-    if (cart.length === 0) { setSubmitError('Your cart is empty.'); return; }
-    if (!customerName.trim() || !customerPhone.trim() || !addressLine1.trim() || !city.trim() || !postalCode.trim()) {
-      setSubmitError('Please fill in name, phone, address, city, and postal code.');
-      return;
-    }
-    if (shipping.requiresQuote) {
-      setSubmitError('Your order exceeds 5 kg. Please contact us via WhatsApp for institutional or bulk shipping.');
-      return;
-    }
-
-    setIsProcessing(true);
-    setSubmitError(null);
-
-    const orderId = `IAD-${Math.floor(100000 + Math.random() * 900000)}`;
-
-    try {
-      await createOrder({
-        orderId,
-        userId: user.uid,
-        customerName,
-        customerPhone,
-        customerEmail,
-        address: {
-          fullName: customerName,
-          phone: customerPhone,
-          email: customerEmail,
-          addressLine1,
-          addressLine2,
-          city,
-          state,
-          postalCode,
-          country: 'India',
-        },
-        items: enriched.map(i => ({
-          id: i.id,
-          title: i.title,
-          author: i.author ?? '',
-          price: i.price,
-          quantity: i.quantity,
-          ...(i.weightGrams != null ? { weightGrams: i.weightGrams } : {}),
-        })),
-        subtotal,
-        discountRate,
-        discountAmount: 0,
-        shippingCost: shipping.cost,
-        totalWeight: shipping.totalWeight,
-        estimatedTotal,
-      });
-
-      setGeneratedOrderId(orderId);
-      setOrderComplete(true);
-      clearCart();
-    } catch (err: any) {
-      console.error('Order request failed:', err);
-      setSubmitError(err?.message || 'Could not submit your order request. Please try again.');
-    } finally {
-      setIsProcessing(false);
-    }
+  const handlePaid = (orderId: string) => {
+    setGeneratedOrderId(orderId);
+    setPaidAmount(estimatedTotal);
+    setOrderComplete(true);
+    clearCart();
   };
 
   if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-[#FBFBFA] flex items-center justify-center font-sans">
-        <p className="text-xs uppercase tracking-widest text-[#1A1A1A]/40 animate-pulse">Preparing order desk…</p>
+        <p className="text-xs uppercase tracking-widest text-[#1A1A1A]/40 animate-pulse">Preparing checkout…</p>
       </div>
     );
   }
@@ -276,16 +219,18 @@ export default function CheckoutPage() {
     return (
       <div className="min-h-screen bg-[#FBFBFA] text-[#1A1A1A] px-6 py-20 flex items-center justify-center font-sans">
         <div className="max-w-md w-full bg-white border border-[#1A1A1A]/10 p-8 text-center shadow-sm rounded-sm">
-          <div className="w-12 h-12 bg-[#7D5A34]/10 text-[#7D5A34] rounded-full flex items-center justify-center mx-auto mb-4 text-xl">✓</div>
-          <span className="font-sans text-[9px] uppercase tracking-[0.25em] font-bold text-[#7D5A34] block mb-1">Order Request Submitted</span>
-          <h2 className="font-serif text-2xl font-normal mb-2">Awaiting Verification</h2>
+          <div className="w-12 h-12 bg-[#7D5A34]/10 text-[#7D5A34] rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-6 h-6" strokeWidth={1.5} />
+          </div>
+          <span className="font-sans text-[9px] uppercase tracking-[0.25em] font-bold text-[#7D5A34] block mb-1">Payment Successful</span>
+          <h2 className="font-serif text-2xl font-normal mb-2">Order Confirmed</h2>
           <p className="text-xs font-mono tracking-widest text-[#1A1A1A]/70 mb-6">{generatedOrderId}</p>
           <p className="text-xs text-[#1A1A1A]/60 leading-relaxed mb-6">
-            Your request has been received and will be verified shortly. You'll receive a payment link once we confirm final shipping and stock.
+            Your payment of ₹{paidAmount.toFixed(2)} has been received. Your order is now confirmed and will be packed and dispatched shortly.
           </p>
           <div className="flex flex-col gap-2">
-            <button onClick={handleDownloadQuotation} className="w-full flex items-center justify-center gap-2 bg-[#7D5A34]/5 border border-[#7D5A34]/30 text-[#7D5A34] text-xs font-bold uppercase tracking-widest py-3 hover:bg-[#7D5A34]/10 transition-colors">
-              <Download className="w-3.5 h-3.5" /> Download Quotation
+            <button onClick={handleDownloadInvoice} className="w-full flex items-center justify-center gap-2 bg-[#7D5A34]/5 border border-[#7D5A34]/30 text-[#7D5A34] text-xs font-bold uppercase tracking-widest py-3 hover:bg-[#7D5A34]/10 transition-colors">
+              <Download className="w-3.5 h-3.5" /> Download Invoice
             </button>
             <button onClick={handleOpenWhatsApp} className="w-full flex items-center justify-center gap-2 bg-[#1A1A1A] hover:bg-[#7D5A34] text-white text-xs font-bold uppercase tracking-widest py-4 transition-colors">
               <MessageCircle className="w-3.5 h-3.5" /> Notify via WhatsApp
@@ -305,6 +250,16 @@ export default function CheckoutPage() {
   const rowLabelClass = "uppercase tracking-wider";
   const rowValueClass = "font-semibold tabular-nums";
 
+  // Address object passed to the checkout API.
+  const addressPayload = {
+    addressLine1,
+    addressLine2,
+    city,
+    state,
+    postalCode,
+    country: 'India',
+  };
+
   return (
     <div className="min-h-screen bg-[#FBFBFA] text-[#1A1A1A] px-6 py-12 md:py-16 font-sans">
       <div className="max-w-5xl mx-auto">
@@ -319,20 +274,10 @@ export default function CheckoutPage() {
           <div className="lg:col-span-7">
             <div className="flex items-center gap-2 mb-1">
               <ShoppingBag className="w-4 h-4 text-[#7D5A34]" strokeWidth={1.5} />
-              <span className="text-[9px] uppercase tracking-[0.25em] font-bold text-[#7D5A34]">Order Request</span>
+              <span className="text-[9px] uppercase tracking-[0.25em] font-bold text-[#7D5A34]">Checkout</span>
             </div>
-            <h2 className="font-serif text-3xl font-normal mb-1">Publisher Verification Workflow</h2>
-            <p className="text-xs text-[#1A1A1A]/60 tracking-widest uppercase mb-8">Submit — we confirm — you pay</p>
-
-            {submitError && (
-              <div className="mb-6 p-4 bg-red-50 border-l-2 border-red-500 text-xs text-red-700 leading-relaxed rounded-sm flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold uppercase tracking-wider block mb-1">Could not submit</span>
-                  <p>{submitError}</p>
-                </div>
-              </div>
-            )}
+            <h2 className="font-serif text-3xl font-normal mb-1">Complete Your Order</h2>
+            <p className="text-xs text-[#1A1A1A]/60 tracking-widest uppercase mb-8">Pay securely — order confirmed instantly</p>
 
             {cart.length === 0 ? (
               <div className="border border-dashed border-[#1A1A1A]/10 bg-white p-12 text-center rounded-sm">
@@ -340,7 +285,7 @@ export default function CheckoutPage() {
                 <a href="/books" className="text-[10px] font-bold uppercase tracking-widest text-[#7D5A34] hover:underline">Browse catalog →</a>
               </div>
             ) : (
-              <form onSubmit={handleSubmitOrderRequest} className="space-y-5">
+              <div className="space-y-5">
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">Full Name *</label>
                   <input required value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none rounded-sm" />
@@ -378,20 +323,26 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={isProcessing || shipping.requiresQuote}
-                  className="w-full bg-[#1A1A1A] hover:bg-[#7D5A34] text-white text-xs font-bold uppercase tracking-widest py-4 transition-colors rounded-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  <ShoppingBag className="w-3.5 h-3.5" strokeWidth={2} />
-                  {isProcessing ? 'Submitting…' : 'Submit Order Request'}
-                </button>
+                {/* Place Order & Pay — straight payment, no verification gate */}
+                <PayButton
+                  items={cart.map(i => ({ bookId: i.id, quantity: i.quantity }))}
+                  address={addressPayload}
+                  customerName={customerName}
+                  customerPhone={customerPhone}
+                  customerEmail={customerEmail}
+                  user={{ name: user?.displayName || '', email: user?.email || '' }}
+                  idToken={idToken}
+                  totalRupees={estimatedTotal}
+                  disabled={shipping.requiresQuote || !idToken}
+                  onPaid={handlePaid}
+                />
 
-                <p className="text-[10px] text-[#1A1A1A]/50 italic text-center leading-relaxed">
-                  Payment is collected only after our team verifies stock and final shipping.
-                  You'll receive a payment link via WhatsApp or email.
-                </p>
-              </form>
+                {!idToken && (
+                  <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 p-2 rounded-sm">
+                    Refreshing your session… if this persists, please log in again.
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
@@ -400,7 +351,7 @@ export default function CheckoutPage() {
               <div className="bg-white border border-[#1A1A1A]/10 p-6 rounded-sm shadow-sm sticky top-[140px]">
                 <div className="flex items-center gap-2 mb-4">
                   <Package className="w-4 h-4 text-[#7D5A34]" strokeWidth={1.5} />
-                  <h3 className="font-serif text-lg">Estimated Summary</h3>
+                  <h3 className="font-serif text-lg">Order Summary</h3>
                 </div>
 
                 <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1 border-b border-[#1A1A1A]/5 pb-4">
@@ -422,10 +373,10 @@ export default function CheckoutPage() {
                     <span className={rowValueClass}>₹{subtotal}</span>
                   </div>
 
-                  {discountRate > 0 && (
+                  {discountAmount > 0 && (
                     <div className={`${rowClass} text-[#7D5A34]`}>
                       <span className={rowLabelClass}>Discount ({discountRate}%)</span>
-                      <span className={rowValueClass}>Applied</span>
+                      <span className={rowValueClass}>-₹{discountAmount}</span>
                     </div>
                   )}
 
@@ -451,7 +402,8 @@ export default function CheckoutPage() {
                   </div>
 
                   {shipping.requiresQuote && (
-                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-sm text-[11px] text-amber-800 leading-relaxed mt-2">
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-sm text-[11px] text-amber-800 leading-relaxed mt-2 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                       {shipping.message}
                     </div>
                   )}
@@ -463,7 +415,7 @@ export default function CheckoutPage() {
                     {shipping.requiresQuote ? '—' : `₹${estimatedTotal}`}
                   </span>
                 </div>
-                <p className="text-[9px] italic text-[#1A1A1A]/40 mt-2 text-right">Provisional. Final amount confirmed on verification.</p>
+                <p className="text-[9px] italic text-[#1A1A1A]/40 mt-2 text-right">Final amount charged on payment.</p>
               </div>
             </div>
           )}
