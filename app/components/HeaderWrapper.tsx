@@ -90,13 +90,27 @@ export default function HeaderWrapper() {
 
           {/* Navigation Links */}
           <nav className="flex flex-wrap items-center justify-center gap-x-5 md:gap-x-7 gap-y-2 font-sans text-xs md:text-sm tracking-wide font-semibold max-w-2xl text-center">
-            {NAV_LINKS.map(({ href, label, Icon }) => (
-              <a key={href} href={href}
-                className={`flex items-center gap-1.5 transition-colors ${pathname === href ? 'text-[#7D5A34] font-bold' : 'text-[#1A1A1A] hover:text-[#7D5A34]'}`}>
-                <Icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2} />
-                <span>{label}</span>
-              </a>
-            ))}
+            {NAV_LINKS.map(({ href, label, Icon }) => {
+              const isActive = pathname === href;
+              const isCatalogue = href === '/books';
+              // Catalogue is the primary shopping destination — always highlighted.
+              if (isCatalogue) {
+                return (
+                  <a key={href} href={href}
+                    className={`flex items-center gap-1.5 transition-all border-b-2 pb-0.5 ${isActive ? 'text-[#7D5A34] border-[#7D5A34]' : 'text-[#7D5A34] border-[#7D5A34]/30 hover:border-[#7D5A34]'}`}>
+                    <Icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2.5} />
+                    <span className="font-bold uppercase tracking-wider">{label}</span>
+                  </a>
+                );
+              }
+              return (
+                <a key={href} href={href}
+                  className={`flex items-center gap-1.5 transition-colors ${isActive ? 'text-[#7D5A34] font-bold' : 'text-[#1A1A1A] hover:text-[#7D5A34]'}`}>
+                  <Icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2} />
+                  <span>{label}</span>
+                </a>
+              );
+            })}
             {!isBooksPage && (
               <button onClick={handleSearchIconClick} aria-label="Search publications"
                 className="flex items-center gap-2 border border-[#1A1A1A]/15 bg-[#1A1A1A]/[0.02] hover:bg-white hover:border-[#1A1A1A]/30 hover:shadow-sm transition-all px-3 py-1.5 rounded-sm text-left">
@@ -192,14 +206,18 @@ export default function HeaderWrapper() {
       {/* Mobile dropdown menu */}
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-[#1A1A1A]/10 bg-[#FBFBFA] px-4 py-3 space-y-0.5">
-          {NAV_LINKS.map(({ href, label, Icon }) => (
-            <a key={href} href={href}
-              className={`flex items-center gap-3 px-3 py-3 font-sans text-sm font-semibold tracking-wide transition-colors rounded-sm ${pathname === href ? 'bg-[#7D5A34]/10 text-[#7D5A34]' : 'text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}
-              onClick={() => setMobileMenuOpen(false)}>
-              <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2} />
-              {label}
-            </a>
-          ))}
+          {NAV_LINKS.map(({ href, label, Icon }) => {
+            const isActive = pathname === href;
+            const isCatalogue = href === '/books';
+            return (
+              <a key={href} href={href}
+                className={`flex items-center gap-3 px-3 py-3 font-sans text-sm font-semibold tracking-wide transition-colors rounded-sm ${isActive ? 'bg-[#7D5A34]/10 text-[#7D5A34]' : 'text-[#1A1A1A] hover:bg-[#1A1A1A]/5'} ${isCatalogue ? 'border-l-2 border-[#7D5A34]' : ''}`}
+                onClick={() => setMobileMenuOpen(false)}>
+                <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={isCatalogue ? 2.5 : 2} />
+                <span className={isCatalogue ? 'uppercase tracking-wider' : ''}>{label}</span>
+              </a>
+            );
+          })}
         </div>
       )}
     </div>
