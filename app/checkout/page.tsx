@@ -11,6 +11,14 @@ import { ShoppingBag, Download, MessageCircle, Home, Package, AlertCircle, Check
 import PayButton from '@/app/components/PayButton';
 
 const WHATSAPP_NUMBER = '919810173618';
+const COUNTRIES = [
+  'India',
+  'Pakistan', 'Bangladesh', 'Nepal', 'Sri Lanka', 'Bhutan',
+  'United Arab Emirates', 'Saudi Arabia', 'Qatar', 'Oman', 'Kuwait', 'Bahrain',
+  'United Kingdom', 'United States', 'Canada', 'Australia', 'Germany', 'France',
+  'Malaysia', 'Indonesia', 'Singapore', 'South Africa',
+  'Other / Rest of World',
+];
 
 interface EnrichedItem extends CartItem {
   weightGrams?: number;
@@ -35,6 +43,8 @@ export default function CheckoutPage() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [postalCode, setPostalCode] = useState('');
+  const [country, setCountry] = useState('India');
+
 
   const [idToken, setIdToken] = useState('');
   const [orderComplete, setOrderComplete] = useState(false);
@@ -84,8 +94,10 @@ export default function CheckoutPage() {
   }, [cart]);
 
   const subtotal = useMemo(() => cartSubtotal(cart), [cart]);
-  const shipping = useMemo(() => calculateShipping(enriched.map(i => ({ quantity: i.quantity, weightGrams: i.weightGrams }))), [enriched]);
-  const postageCost = shipping.postageCost ?? 0;
+const shipping = useMemo(() => calculateShipping(
+    enriched.map(i => ({ quantity: i.quantity, weightGrams: i.weightGrams })),
+    { country }
+  ), [enriched, country]);  const postageCost = shipping.postageCost ?? 0;
   const handlingCharge = shipping.handlingCharge ?? 0;
   const shippingCost = shipping.cost ?? 0; // postage + handling
   const discountAmount = useMemo(() => {
@@ -257,7 +269,7 @@ export default function CheckoutPage() {
     city,
     state,
     postalCode,
-    country: 'India',
+    country,
   };
 
   return (
@@ -321,6 +333,17 @@ export default function CheckoutPage() {
                     <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">PIN Code *</label>
                     <input required value={postalCode} onChange={e => setPostalCode(e.target.value)} className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none rounded-sm" />
                   </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">Country *</label>
+                  <select
+                    required
+                    value={country}
+                    onChange={e => setCountry(e.target.value)}
+                    className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none rounded-sm"
+                  >
+                    {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
                 </div>
 
                 {/* Place Order & Pay — straight payment, no verification gate */}
@@ -415,6 +438,11 @@ export default function CheckoutPage() {
                     {shipping.requiresQuote ? '—' : `₹${estimatedTotal}`}
                   </span>
                 </div>
+                 {country !== 'India' && (
+                  <p className="text-[9px] italic text-[#1A1A1A]/40 mt-2">
+                    International delivery via India Post Speed Post. Customs duties, if any, are payable by the receiver.
+                  </p>
+                )}
                 <p className="text-[9px] italic text-[#1A1A1A]/40 mt-2 text-right">Final amount charged on payment.</p>
               </div>
             </div>

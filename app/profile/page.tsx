@@ -235,7 +235,8 @@ export default function ProfilePage() {
                     {orders.map((order: Order) => {
                       const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : '—';
                       const status = STATUS_LABELS[order.status] ?? order.status;
-                      const total = order.finalTotal ?? order.estimatedTotal;
+                      const total = order.total ?? 0;
+
                       return (
                         <div key={order.orderId} className="bg-white border border-[#1A1A1A]/10 p-5 rounded-sm shadow-sm">
                           <div className="flex justify-between items-start gap-3 mb-3 pb-3 border-b border-[#1A1A1A]/5">
@@ -251,13 +252,8 @@ export default function ProfilePage() {
                               <span>₹{it.price * it.quantity}</span>
                             </div>
                           ))}
-                          {order.paymentLink && order.status === 'awaiting_payment' && (
-                            <a href={order.paymentLink} target="_blank" rel="noreferrer" className="mt-3 block text-center bg-[#7D5A34] text-white text-[10px] font-bold uppercase tracking-widest py-2 hover:bg-[#1A1A1A] transition-colors">
-                              Pay Now →
-                            </a>
-                          )}
-                          <div className="flex justify-between items-center mt-3 pt-3 border-t border-[#1A1A1A]/10">
-                            <span className="text-[10px] uppercase tracking-widest text-[#1A1A1A]/40 font-bold">{order.finalTotal ? 'Final Total' : 'Estimated'}</span>
+                           <div className="flex justify-between items-center mt-3 pt-3 border-t border-[#1A1A1A]/10">
+                            <span className="text-[10px] uppercase tracking-widest text-[#1A1A1A]/40 font-bold">Total</span>
                             <span className="font-serif font-bold text-base">₹{total}</span>
                           </div>
                         </div>

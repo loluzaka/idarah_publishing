@@ -210,20 +210,6 @@ const bookType = {
       description: 'Short text shown when no cover image is available (e.g. initials).',
     },
     {
-      name: 'galleryImages',
-      title: '⚠️ Gallery Images (Deprecated — move to "Contents & Preface Pages")',
-      type: 'array',
-      description: 'DEPRECATED. Copy these images into "Contents & Preface Pages" below, then delete them here.',
-      of: [{ type: 'image', options: { hotspot: true } }],
-    },
-    {
-      name: 'lookInsidePages',
-      title: '⚠️ Look Inside Pages (Deprecated — move to "Look Inside — Sample Pages")',
-      type: 'array',
-      description: 'DEPRECATED. Copy these images into "Look Inside — Sample Pages" below, then delete them here.',
-      of: [{ type: 'image', options: { hotspot: true } }],
-    },
-    {
       name: 'contentsImages',
       title: 'Contents & Preface Pages',
       type: 'array',

@@ -2,6 +2,7 @@
 // Import and use buildFuseIndex + fuseSearch anywhere books are searched.
 
 import Fuse from 'fuse.js';
+import type { IFuseOptions } from 'fuse.js';
 
 export interface SearchableBook {
   _id: string;
@@ -20,7 +21,7 @@ export interface SearchableBook {
   [key: string]: any;
 }
 
-export const FUSE_OPTIONS: Fuse.IFuseOptions<SearchableBook> = {
+export const FUSE_OPTIONS: IFuseOptions<SearchableBook> = {
   includeScore: true,
   // 0 = exact match only, 1 = match anything. 0.4 allows reasonable typos.
   threshold: 0.4,

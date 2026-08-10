@@ -1,13 +1,15 @@
-// Firestore order collection — publisher verification workflow.
+// Firestore order collection — straight-payment workflow.
 // Order lifecycle:
-//   pending_verification → verified → awaiting_payment → paid → packing → shipped → delivered
-// (rejected / cancelled are terminal states available at any point)
+//   pending_payment → paid → packed → shipped → delivered
+// (cancelled is a terminal state available at any point)
+//
+// Canonical order shape — written by /api/checkout, /api/payments/verify,
+// /api/payments/webhook. Read by this lib (profile + admin).
 
 import { db } from './firebase';
 import {
   collection,
   doc,
-  setDoc,
   updateDoc,
   getDoc,
   getDocs,
@@ -19,29 +21,23 @@ import {
 } from 'firebase/firestore';
 
 export const ORDER_STATUSES = [
-  'pending_verification',
-  'verified',
-  'awaiting_payment',
+  'pending_payment',
   'paid',
-  'packing',
+  'packed',
   'shipped',
   'delivered',
   'cancelled',
-  'rejected',
 ] as const;
 
 export type OrderStatus = typeof ORDER_STATUSES[number];
 
 export const STATUS_LABELS: Record<OrderStatus, string> = {
-  pending_verification: 'Pending Verification',
-  verified:             'Verified',
-  awaiting_payment:     'Awaiting Payment',
-  paid:                 'Paid',
-  packing:              'Packing',
-  shipped:              'Shipped',
-  delivered:            'Delivered',
-  cancelled:            'Cancelled',
-  rejected:             'Rejected',
+  pending_payment: 'Pending Payment',
+  paid:            'Paid',
+  packed:          'Packed',
+  shipped:         'Shipped',
+  delivered:       'Delivered',
+  cancelled:       'Cancelled',
 };
 
 export interface OrderItem {
@@ -65,28 +61,35 @@ export interface OrderAddress {
   country?: string;
 }
 
+export interface OrderPayment {
+  method: string;
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  paidAt?: number;
+}
+
 export interface Order {
-  id?: string;
-  orderId: string;
-  userId: string;
+  id?: string;            // Firestore doc id
+  orderId: string;        // readable IAD-XXXXXX
+  uid: string;            // Firebase uid (was `userId` in legacy)
   customerName: string;
   customerPhone: string;
   customerEmail?: string;
   address: OrderAddress;
   items: OrderItem[];
   subtotal: number;
-  discountRate: number;
+  discountRate: number;       // percent (e.g. 10)
   discountAmount: number;
   shippingCost: number | null;
-  totalWeight: number;
-  estimatedTotal: number;
-  finalTotal?: number;
+  shippingWeight: number;
+  tax: number;
+  total: number;              // canonical final total
   status: OrderStatus;
+  razorpayOrderId?: string;
+  payment?: OrderPayment;
   adminNotes?: string;
-  paymentLink?: string;
   createdAt?: number;
   updatedAt?: number;
-  verifiedAt?: number;
   paidAt?: number;
   shippedAt?: number;
   trackingNumber?: string;
@@ -98,9 +101,6 @@ function ordersCol() {
   return collection(db, 'orders');
 }
 
-// Firestore does not accept `undefined` — drop any key whose value is undefined.
-// Only recurses into PLAIN objects ({}) — Firestore FieldValue / Timestamp sentinels
-// are left untouched by checking Object.getPrototypeOf === Object.prototype.
 function isPlainObject(v: unknown): v is Record<string, any> {
   return v !== null && typeof v === 'object' && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype;
 }
@@ -121,43 +121,62 @@ function stripUndefined(obj: Record<string, any>): Record<string, any> {
 }
 
 function toMs(v: any): number | undefined {
-  return v instanceof Timestamp ? v.toMillis() : undefined;
+  if (v instanceof Timestamp) return v.toMillis();
+  if (v instanceof Date) return v.getTime();
+  if (typeof v === 'number') return v;
+  return undefined;
+}
+
+// Normalises an item from either the new ({bookId, weightGrams}) or legacy ({id}) shape.
+function normItem(raw: any): OrderItem {
+  return {
+    id: raw.id ?? raw.bookId ?? '',
+    title: raw.title ?? '',
+    author: raw.author,
+    price: Number(raw.price) || 0,
+    quantity: Number(raw.quantity) || 1,
+    weightGrams: raw.weightGrams != null ? Number(raw.weightGrams) : undefined,
+  };
 }
 
 function fromSnap(id: string, data: any): Order {
+  const status = (ORDER_STATUSES as readonly string[]).includes(data.status)
+    ? data.status
+    : 'pending_payment';
+  const total = Number(data.total ?? data.estimatedTotal ?? data.finalTotal ?? 0);
   return {
     id,
-    orderId: data.orderId,
-    userId: data.userId,
+    orderId: data.orderId ?? id,
+    uid: data.uid ?? data.userId ?? '',
     customerName: data.customerName ?? '',
     customerPhone: data.customerPhone ?? '',
     customerEmail: data.customerEmail ?? '',
     address: data.address ?? {},
-    items: Array.isArray(data.items) ? data.items : [],
+    items: Array.isArray(data.items) ? data.items.map(normItem) : [],
     subtotal: Number(data.subtotal) || 0,
     discountRate: Number(data.discountRate) || 0,
     discountAmount: Number(data.discountAmount) || 0,
     shippingCost: data.shippingCost == null ? null : Number(data.shippingCost),
-    totalWeight: Number(data.totalWeight) || 0,
-    estimatedTotal: Number(data.estimatedTotal) || 0,
-    finalTotal: data.finalTotal != null ? Number(data.finalTotal) : undefined,
-    status: (ORDER_STATUSES as readonly string[]).includes(data.status) ? data.status : 'pending_verification',
+    shippingWeight: Number(data.shippingWeight ?? data.totalWeight) || 0,
+    tax: Number(data.tax) || 0,
+    total,
+    status,
+    razorpayOrderId: data.razorpayOrderId ?? undefined,
+    payment: data.payment ?? undefined,
     adminNotes: data.adminNotes ?? undefined,
-    paymentLink: data.paymentLink ?? undefined,
     createdAt: toMs(data.createdAt),
     updatedAt: toMs(data.updatedAt),
-    verifiedAt: toMs(data.verifiedAt),
-    paidAt: toMs(data.paidAt),
+    paidAt: toMs(data.paidAt ?? data.payment?.paidAt),
     shippedAt: toMs(data.shippedAt),
     trackingNumber: data.trackingNumber ?? undefined,
   };
 }
 
-/** Orders for one user, newest first. */
+/** Orders for one user, newest first. Queries by `uid` (new shape). */
 export async function getUserOrders(userId: string): Promise<Order[]> {
   if (!userId) return [];
   try {
-    const q = query(ordersCol(), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+    const q = query(ordersCol(), where('uid', '==', userId), orderBy('createdAt', 'desc'));
     const snap = await getDocs(q);
     return snap.docs.map(d => fromSnap(d.id, d.data()));
   } catch (err) {
@@ -181,26 +200,9 @@ export async function getAllOrders(): Promise<Order[]> {
 // ─── Writes ───────────────────────────────────────────────────────────────────
 
 /**
- * Create an order request. Status starts as `pending_verification` — no payment yet.
- * Uses the readable `orderId` (IAD-XXXXXX) as the Firestore doc ID for easy lookup.
- */
-export async function createOrder(input: Omit<Order, 'id' | 'status' | 'createdAt' | 'updatedAt'>): Promise<Order> {
-  const ref = doc(ordersCol(), input.orderId);
-  const rawPayload = {
-    ...input,
-    status: 'pending_verification' as OrderStatus,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
-  const payload = stripUndefined(rawPayload as Record<string, any>);
-  await setDoc(ref, payload);
-  const saved = await getDoc(ref);
-  return fromSnap(ref.id, saved.data() ?? {});
-}
-
-/**
- * Admin operation — advance an order to a new status, optionally attach a payment link,
- * adjust the final total (if shipping/discount changed), or store tracking info.
+ * Admin operation — advance an order to a new status, optionally adjust
+ * shipping/total, store tracking info, or add notes.
+ * `orderDocId` is the Firestore document id (Order.id).
  */
 export async function updateOrder(
   orderDocId: string,
@@ -209,9 +211,13 @@ export async function updateOrder(
   const payload = stripUndefined({ ...updates, updatedAt: serverTimestamp() } as Record<string, any>);
 
   // Auto-stamp state transition timestamps
-  if (updates.status === 'verified') payload.verifiedAt = serverTimestamp();
   if (updates.status === 'paid') payload.paidAt = serverTimestamp();
   if (updates.status === 'shipped') payload.shippedAt = serverTimestamp();
 
   await updateDoc(doc(ordersCol(), orderDocId), payload);
+}
+
+/** Generate a readable order id: IAD-XXXXXX. */
+export function generateOrderId(): string {
+  return `IAD-${Math.floor(100000 + Math.random() * 900000)}`;
 }

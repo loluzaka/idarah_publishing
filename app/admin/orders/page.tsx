@@ -5,44 +5,37 @@ import { Package, MessageCircle } from 'lucide-react';
 import { getAllOrders, updateOrder, Order, OrderStatus, STATUS_LABELS, ORDER_STATUSES } from '@/app/lib/orders';
 
 const PIPELINE_ORDER: OrderStatus[] = [
-  'pending_verification',
-  'verified',
-  'awaiting_payment',
+  'pending_payment',
   'paid',
-  'packing',
+  'packed',
   'shipped',
   'delivered',
 ];
 
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
-  pending_verification: 'verified',
-  verified: 'awaiting_payment',
-  awaiting_payment: 'paid',
-  paid: 'packing',
-  packing: 'shipped',
-  shipped: 'delivered',
+  pending_payment: 'paid',
+  paid:            'packed',
+  packed:          'shipped',
+  shipped:         'delivered',
 };
 
 const PILL: Record<OrderStatus, string> = {
-  pending_verification: 'bg-amber-50 text-amber-700 border-amber-200',
-  verified:             'bg-blue-50 text-blue-700 border-blue-200',
-  awaiting_payment:     'bg-purple-50 text-purple-700 border-purple-200',
-  paid:                 'bg-green-50 text-green-700 border-green-200',
-  packing:              'bg-indigo-50 text-indigo-700 border-indigo-200',
-  shipped:              'bg-teal-50 text-teal-700 border-teal-200',
-  delivered:            'bg-[#7D5A34]/10 text-[#7D5A34] border-[#7D5A34]/20',
-  cancelled:            'bg-[#1A1A1A]/5 text-[#1A1A1A]/60 border-[#1A1A1A]/10',
-  rejected:             'bg-red-50 text-red-700 border-red-200',
+  pending_payment: 'bg-amber-50 text-amber-700 border-amber-200',
+  paid:            'bg-green-50 text-green-700 border-green-200',
+  packed:          'bg-indigo-50 text-indigo-700 border-indigo-200',
+  shipped:         'bg-teal-50 text-teal-700 border-teal-200',
+  delivered:       'bg-[#7D5A34]/10 text-[#7D5A34] border-[#7D5A34]/20',
+  cancelled:       'bg-[#1A1A1A]/5 text-[#1A1A1A]/60 border-[#1A1A1A]/10',
 };
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | OrderStatus>('pending_verification');
+  const [filter, setFilter] = useState<'all' | OrderStatus>('pending_payment');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [shippingEdits, setShippingEdits] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
-  const [paymentLinks, setPaymentLinks] = useState<Record<string, string>>({});
+  const [tracking, setTracking] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = async () => {
@@ -69,13 +62,13 @@ export default function AdminOrdersPage() {
       const n = Number(editedShipping);
       if (Number.isFinite(n)) {
         updates.shippingCost = n;
-        updates.finalTotal = o.subtotal + n;
+        updates.total = o.subtotal - o.discountAmount + n + (o.tax || 0);
       }
     }
     const note = notes[o.id];
     if (note !== undefined) updates.adminNotes = note;
-    const link = paymentLinks[o.id];
-    if (link !== undefined && link.trim() !== '') updates.paymentLink = link.trim();
+    const tn = tracking[o.id];
+    if (tn !== undefined && tn.trim() !== '') updates.trackingNumber = tn.trim();
 
     await updateOrder(o.id, updates);
     await load();
@@ -150,8 +143,8 @@ export default function AdminOrdersPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className="font-serif font-bold">₹{o.finalTotal ?? o.estimatedTotal}</p>
-                      <p className="text-[9px] text-[#1A1A1A]/40 uppercase tracking-widest">{o.items.reduce((n, i) => n + i.quantity, 0)} items · {o.totalWeight}g</p>
+                      <p className="font-serif font-bold">₹{o.total}</p>
+                      <p className="text-[9px] text-[#1A1A1A]/40 uppercase tracking-widest">{o.items.reduce((n, i) => n + i.quantity, 0)} items · {o.shippingWeight}g</p>
                     </div>
                     <button
                       onClick={() => setExpanded(isOpen ? null : (o.id ?? null))}
@@ -189,6 +182,15 @@ export default function AdminOrdersPage() {
                       </div>
                     </div>
 
+                    {/* Payment info (paid orders) */}
+                    {o.payment && (
+                      <div className="text-xs bg-green-50/50 border border-green-100 rounded-sm p-3">
+                        <span className="text-[9px] uppercase tracking-widest font-bold text-green-700 block mb-1">Payment</span>
+                        {o.payment.method} · {o.payment.razorpay_payment_id}
+                        {o.paidAt && <span className="text-[10px] text-[#1A1A1A]/50 ml-2">paid {new Date(o.paidAt).toLocaleDateString('en-IN')}</span>}
+                      </div>
+                    )}
+
                     {/* Admin overrides */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
@@ -202,11 +204,11 @@ export default function AdminOrdersPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-[9px] uppercase tracking-widest font-bold text-[#1A1A1A]/40 block mb-1">Payment Link</label>
+                        <label className="text-[9px] uppercase tracking-widest font-bold text-[#1A1A1A]/40 block mb-1">Tracking Number</label>
                         <input
-                          placeholder={o.paymentLink ?? 'https://…'}
-                          value={paymentLinks[o.id!] ?? ''}
-                          onChange={e => setPaymentLinks(s => ({ ...s, [o.id!]: e.target.value }))}
+                          placeholder={o.trackingNumber ?? '—'}
+                          value={tracking[o.id!] ?? ''}
+                          onChange={e => setTracking(s => ({ ...s, [o.id!]: e.target.value }))}
                           className="w-full border border-[#1A1A1A]/15 px-2 py-1.5 text-xs outline-none focus:border-[#7D5A34]"
                         />
                       </div>
@@ -249,15 +251,15 @@ export default function AdminOrdersPage() {
                           <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                         ))}
                       </select>
-                      {o.status !== 'cancelled' && o.status !== 'rejected' && (
+                      {o.status !== 'cancelled' && o.status !== 'delivered' && (
                         <button
                           onClick={() => {
-                            if (confirm('Reject this order?')) setStatus(o, 'rejected');
+                            if (confirm('Cancel this order? If paid, initiate a refund in Razorpay.')) setStatus(o, 'cancelled');
                           }}
                           disabled={isBusy}
                           className="text-[10px] font-bold uppercase tracking-widest border border-red-200 text-red-600 px-3 py-2 hover:bg-red-50 transition-colors ml-auto"
                         >
-                          Reject
+                          Cancel Order
                         </button>
                       )}
                     </div>

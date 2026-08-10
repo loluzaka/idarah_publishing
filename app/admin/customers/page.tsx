@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { client } from '@/app/sanityClient';
 import { Users } from 'lucide-react';
+import { getAllOrders } from '@/app/lib/orders';
 
 interface CustomerSummary {
   userId: string;
@@ -11,7 +11,7 @@ interface CustomerSummary {
   phone?: string;
   orderCount: number;
   totalSpent: number;
-  lastOrderAt?: string;
+  lastOrderAt?: number;
 }
 
 export default function AdminCustomersPage() {
@@ -22,24 +22,24 @@ export default function AdminCustomersPage() {
   useEffect(() => {
     (async () => {
       try {
-        const orders = await client.fetch(`*[_type == "order"]{
-          userId, customerName, customerEmail, customerPhone, totalAmount, _createdAt
-        }`);
+        const orders = await getAllOrders();
 
         const map = new Map<string, CustomerSummary>();
-        for (const o of orders ?? []) {
-          const key = o.userId || o.customerEmail || o.customerPhone || 'unknown';
+        for (const o of orders) {
+          const key = o.uid || o.customerEmail || o.customerPhone || 'unknown';
           const cur = map.get(key) ?? {
             userId: key,
-            name: o.customerName ?? '—',
+            name: o.customerName || '—',
             email: o.customerEmail,
             phone: o.customerPhone,
             orderCount: 0,
             totalSpent: 0,
           };
           cur.orderCount++;
-          cur.totalSpent += Number(o.totalAmount) || 0;
-          if (!cur.lastOrderAt || (o._createdAt && o._createdAt > cur.lastOrderAt)) cur.lastOrderAt = o._createdAt;
+          cur.totalSpent += Number(o.total) || 0;
+          if (o.createdAt && (!cur.lastOrderAt || o.createdAt > cur.lastOrderAt)) {
+            cur.lastOrderAt = o.createdAt;
+          }
           map.set(key, cur);
         }
 

@@ -101,7 +101,7 @@ export default function PayButton({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Could not start checkout");
       }
-      const { orderId, razorpayOrderId, amount } = await res.json();
+      const { orderId, displayOrderId, razorpayOrderId, amount } = await res.json();
 
       // 2. Open Razorpay Checkout on this page (no redirect away).
       const rzp = new window.Razorpay({
@@ -133,7 +133,7 @@ export default function PayButton({
             }),
           });
           if (v.ok) {
-            onPaid?.(orderId);
+            onPaid?.(displayOrderId ?? orderId);
           } else {
             const msg =
               "Verification failed. If money was debited, the webhook will confirm it shortly.";

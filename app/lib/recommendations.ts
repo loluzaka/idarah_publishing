@@ -23,8 +23,13 @@ export interface ScoredBook {
   publisher?: string | null;
   description?: string | null;
   categories?: Array<{ _id?: string; title?: string; slug?: string | { current: string } | null } | null> | null;
+  price: number;
+  originalPrice?: number | null;
+  coverImage?: any;
+  coverPlaceholder?: string | null;
   [key: string]: any;
 }
+
 
 // ─── localStorage keys ────────────────────────────────────────────────────────
 

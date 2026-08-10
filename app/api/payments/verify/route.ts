@@ -7,8 +7,8 @@ import { verifyIdToken, getAdminDb } from "@/app/lib/firebase-admin";
 // Header: Authorization: Bearer <firebase id token>
 //
 // Verifies the signature returned by Razorpay Checkout and flips the order
-// from "Pending Payment" to "Paid". The webhook route is the authoritative
-// path; this is the fast client-side confirmation.
+// from pending_payment to paid. The webhook route is the authoritative path;
+// this is the fast client-side confirmation.
 export async function POST(req: Request) {
   try {
     const uid = await verifyIdToken(req.headers.get("authorization"));
@@ -47,13 +47,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "invalid signature" }, { status: 400 });
     }
 
+    const now = new Date();
     await snap.ref.update({
-      status: "Paid",
+      status: "paid",
+      paidAt: now,
       payment: {
         method: "Razorpay",
         razorpay_order_id,
         razorpay_payment_id,
-        paidAt: new Date(),
+        paidAt: now,
       },
     });
 

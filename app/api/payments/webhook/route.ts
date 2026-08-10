@@ -7,7 +7,7 @@ import { getAdminDb } from "@/app/lib/firebase-admin";
 // Event: payment.captured
 //
 // AUTHORITATIVE confirmation. If the customer closes the tab before the
-// client verify call runs, this still marks the order Paid. Keep enabled.
+// client verify call runs, this still marks the order paid. Keep enabled.
 export async function POST(req: Request) {
   try {
     // Razorpay signs the raw body — read as text first, parse after.
@@ -30,18 +30,19 @@ export async function POST(req: Request) {
       const payment = event.payload?.payment?.entity;
       const orderId = payment?.notes?.orderId;
       if (orderId) {
+        const now = new Date();
         await getAdminDb().collection("orders").doc(orderId).update({
-          status: "Paid",
+          status: "paid",
+          paidAt: now,
           "payment.method": "Razorpay",
           "payment.razorpay_payment_id": payment.id,
           "payment.razorpay_order_id": payment.order_id,
           "payment.amount": payment.amount, // paise
-          "payment.paidAt": new Date(),
+          "payment.paidAt": now,
         });
       }
     }
 
-    // Optional: handle refund / failure events here later.
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[payments/webhook] error:", err);
