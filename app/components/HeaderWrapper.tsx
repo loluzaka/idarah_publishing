@@ -112,10 +112,10 @@ export default function HeaderWrapper() {
               );
             })}
             {!isBooksPage && (
-              <button onClick={handleSearchIconClick} aria-label="Search publications"
+              <button onClick={handleSearchIconClick} aria-label="Explore our catalogue"
                 className="flex items-center gap-2 border border-[#1A1A1A]/15 bg-[#1A1A1A]/[0.02] hover:bg-white hover:border-[#1A1A1A]/30 hover:shadow-sm transition-all px-3 py-1.5 rounded-sm text-left">
                 <Search className="w-3.5 h-3.5 text-[#1A1A1A]/35 flex-shrink-0" strokeWidth={2} />
-                <span className="font-sans text-xs text-[#1A1A1A]/35 w-32 truncate">Search publications…</span>
+                <span className="font-sans text-xs text-[#1A1A1A]/35 w-32 truncate">Explore our catalogue...</span>
               </button>
             )}
           </nav>

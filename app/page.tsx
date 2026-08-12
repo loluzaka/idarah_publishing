@@ -660,12 +660,12 @@ export default function HomePage() {
               onClick={() => setIsCartMaximized(false)}
               className="absolute top-6 right-8 text-xl text-[#1a1a1a]/50 hover:text-black hover:scale-110 transition-transform font-sans font-light"
             >
-              ✕ Close Overlay
+              ✕ Close
             </button>
 
             <div className="border-b pb-4 mb-6">
-              <span className="font-sans text-[9px] uppercase tracking-[0.25em] font-bold text-[#7D5A34]">Pre-Invoice Summary</span>
-              <h2 className="text-2xl font-normal tracking-tight mt-1">Review Selection Desk</h2>
+              <span className="font-sans text-[9px] uppercase tracking-[0.25em] font-bold text-[#7D5A34]">Order Summary</span>
+              <h2 className="text-2xl font-normal tracking-tight mt-1">Your Summary</h2>
             </div>
 
             {cart.length === 0 ? (
@@ -673,7 +673,7 @@ export default function HomePage() {
             ) : (
               <div className="space-y-4">
                 <div className="hidden sm:grid grid-cols-5 text-[10px] font-sans font-bold uppercase tracking-wider text-[#1a1a1a]/60 pb-2 border-b">
-                  <div className="col-span-3">Item details</div>
+                  <div className="col-span-3">Book Title</div>
                   <div className="text-center">Quantity</div>
                   <div className="text-right">Price</div>
                 </div>
@@ -707,8 +707,8 @@ export default function HomePage() {
 
                 <div className="pt-6 flex flex-col items-end">
                   <div className="w-full sm:w-64 space-y-2 font-sans text-xs border-b pb-4 mb-6">
-                    <div className="flex justify-between text-[#1A1A1A]/60"><span>Items Subtotal</span><span>₹{tentativeSubtotal}</span></div>
-                    <div className="flex justify-between text-sm font-bold pt-1 text-[#7D5A34]"><span>Total Tentative Amount</span><span>₹{tentativeSubtotal}</span></div>
+                    <div className="flex justify-between text-[#1A1A1A]/60"><span>Subtotal</span><span>₹{tentativeSubtotal}</span></div>
+                    <div className="flex justify-between text-sm font-bold pt-1 text-[#7D5A34]"><span>Total</span><span>₹{tentativeSubtotal}</span></div>
                   </div>
 
                   <div className="flex gap-4 w-full justify-end font-sans">
