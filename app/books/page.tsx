@@ -708,21 +708,20 @@ export default function BooksPage() {
         </div>
 
         {/* Right Sidebar — cart pinned above How To Order */}
-        <div className="w-full lg:w-[260px] flex-shrink-0 flex flex-col gap-6 lg:sticky lg:top-[140px] h-fit self-start">
+                <div className="w-full lg:w-[30%] flex-shrink-0 flex flex-col gap-6 lg:sticky lg:top-[180px] h-fit self-start">
+
 
           {isCartOpen && (
-            <div className="bg-white border border-[#1A1A1A]/10 rounded-sm shadow-sm overflow-hidden transition-all duration-300">
+            <div className="bg-white border border-[#1A1A1A]/10 rounded-sm shadow-sm overflow-hidden transition-all duration-300 max-h-[calc(100vh-170px)] flex flex-col">
               <div className="bg-[#7D5A34]/10 px-5 py-4 flex items-center gap-3">
                 <div className="w-11 h-11 rounded-full bg-[#7D5A34] text-white flex items-center justify-center flex-shrink-0 shadow-sm">
                   <ClipboardList className="w-5 h-5" strokeWidth={1.75} />
                 </div>
                 <div className="flex-grow min-w-0">
                   <span className="block font-sans text-[10px] font-bold tracking-[0.25em] uppercase text-[#7D5A34]/80">
-                    Your Selection
+                    Your Cart
                   </span>
-                  <h3 className="font-serif text-lg leading-tight text-[#1A1A1A] truncate">
-                    Book To Order
-                  </h3>
+                 
                 </div>
                 <div className="flex items-center gap-2 text-[#1A1A1A]/50 flex-shrink-0">
                   <button onClick={() => setIsCartMaximized(true)} className="hover:text-[#7D5A34] transition-colors p-1 text-lg leading-none" title="Maximize" aria-label="Maximize">⛶</button>
@@ -730,7 +729,7 @@ export default function BooksPage() {
                 </div>
               </div>
 
-              <div className="px-5 pt-4 pb-3">
+              <div className="px-5 pt-4 pb-3 max-h-[360px] overflow-y-auto">
                 {cart.length === 0 ? (
                   <div className="py-8 text-center">
                     <p className="font-sans text-[11px] text-[#1A1A1A]/40 italic mb-3">Your selection is empty.</p>
@@ -741,7 +740,7 @@ export default function BooksPage() {
                     {cart.map(item => (
                       <div key={item.id} className="flex items-start justify-between gap-3 pb-3 border-b border-[#1A1A1A]/5 last:border-b-0">
                         <div className="flex-grow min-w-0">
-                          <p className="font-serif text-base font-normal leading-snug text-[#1A1A1A] truncate">{item.title}</p>
+                          <p className="font-serif text-base font-normal leading-snug text-[#1A1A1A]">{item.title}</p>
                           <div className="flex items-center gap-3 mt-2 font-sans text-sm text-[#1A1A1A]/70">
                             <button onClick={() => decreaseQuantity(item.id)} className="w-5 h-5 flex items-center justify-center select-none hover:text-[#7D5A34] transition-colors" aria-label="Decrease quantity">—</button>
                             <span className="font-semibold text-[#1A1A1A] min-w-[14px] text-center">{item.quantity}</span>
@@ -768,7 +767,7 @@ export default function BooksPage() {
                     <span className="font-serif text-xl font-normal text-[#1A1A1A] tabular-nums">₹{tentativeSubtotal}</span>
                   </div>
                   <a href="/cart" className="block text-center bg-[#1A1A1A] text-white mx-5 py-3.5 font-sans text-xs font-bold uppercase tracking-widest hover:bg-[#7D5A34] transition-colors rounded-sm">
-                    Review Selection
+                    COMPLETE ORDER
                   </a>
                   <button onClick={handleClearCart} className="block w-full text-center font-sans text-[11px] font-bold uppercase tracking-widest text-[#1A1A1A]/50 hover:text-red-500 transition-colors py-3">Clear Cart</button>
                 </>
@@ -776,59 +775,23 @@ export default function BooksPage() {
             </div>
           )}
 
-          {/* How To Order */}
-          <div className="bg-white border border-[#1A1A1A]/10 rounded-sm shadow-sm overflow-hidden">
-            <div className="bg-[#7D5A34]/5 border-b border-[#7D5A34]/15 px-5 py-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-[#7D5A34] text-white flex items-center justify-center">
-                <ClipboardList className="w-4 h-4" strokeWidth={2} />
-              </div>
-              <div>
-                <span className="block font-sans text-[9px] font-bold tracking-[0.25em] uppercase text-[#7D5A34]">Ordering Guide</span>
-                <h4 className="font-serif text-base leading-tight text-[#1A1A1A]">How To Order</h4>
-              </div>
-            </div>
-            <ol className="p-5 space-y-3">
-              <li className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-[#1A1A1A]/5 text-[#7D5A34] flex items-center justify-center flex-shrink-0">
-                  <ClipboardList className="w-3.5 h-3.5" strokeWidth={2} />
-                </div>
-                <p className="font-sans text-[11px] leading-relaxed text-[#1A1A1A]/75">Compile your selection from the catalogue.</p>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-[#1A1A1A]/5 text-[#7D5A34] flex items-center justify-center flex-shrink-0">
-                  <MessageCircle className="w-3.5 h-3.5" strokeWidth={2} />
-                </div>
-                <p className="font-sans text-[11px] leading-relaxed text-[#1A1A1A]/75">Submit via WhatsApp or the checkout form.</p>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-[#1A1A1A]/5 text-[#7D5A34] flex items-center justify-center flex-shrink-0">
-                  <Truck className="w-3.5 h-3.5" strokeWidth={2} />
-                </div>
-                <p className="font-sans text-[11px] leading-relaxed text-[#1A1A1A]/75">We verify stock, apply discounts, and quote India Post shipping.</p>
-              </li>
-            </ol>
-            <a href="/how-to-order" className="group flex items-center justify-center gap-2 bg-[#1A1A1A] text-white hover:bg-[#7D5A34] font-sans text-[10px] font-bold uppercase tracking-widest py-3 transition-colors">
-              Full Shipping Terms
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
-            </a>
-          </div>
         </div>
       </main>
 
       {isCartMaximized && (
         <div className="fixed inset-0 bg-[#1a1a1a]/70 backdrop-blur-md z-[100] flex items-center justify-center p-4">
           <div className="bg-white border border-[#1A1A1A]/10 max-w-2xl w-full p-8 shadow-2xl relative overflow-y-auto max-h-[90vh]">
-            <button onClick={() => setIsCartMaximized(false)} className="absolute top-6 right-8 text-xl text-[#1a1a1a]/50 hover:text-black hover:scale-110 transition-transform font-sans font-light">✕ Close Overlay</button>
+            <button onClick={() => setIsCartMaximized(false)} className="absolute top-6 right-8 text-xl text-[#1a1a1a]/50 hover:text-black hover:scale-110 transition-transform font-sans font-light">✕ Close</button>
             <div className="border-b pb-4 mb-6">
-              <span className="font-sans text-[9px] uppercase tracking-[0.25em] font-bold text-[#7D5A34]">Pre-Invoice Summary</span>
-              <h2 className="text-2xl font-normal tracking-tight mt-1">Review Selection Desk</h2>
+              <span className="font-sans text-[9px] uppercase tracking-[0.25em] font-bold text-[#7D5A34]">Order Summary</span>
+              <h2 className="text-2xl font-normal tracking-tight mt-1">Your Order</h2>
             </div>
             {cart.length === 0 ? (
               <div className="py-12 text-center text-[#1A1A1A]/40 font-sans text-xs uppercase tracking-wider">Your academic compilation drawer is currently empty</div>
             ) : (
               <div className="space-y-4">
                 <div className="hidden sm:grid grid-cols-5 text-[10px] font-sans font-bold uppercase tracking-wider text-[#1a1a1a]/60 pb-2 border-b">
-                  <div className="col-span-3">Item details</div>
+                  <div className="col-span-3">Book Title</div>
                   <div className="text-center">Quantity</div>
                   <div className="text-right">Price</div>
                 </div>
@@ -848,12 +811,12 @@ export default function BooksPage() {
                 ))}
                 <div className="pt-6 flex flex-col items-end">
                   <div className="w-full sm:w-64 space-y-2 font-sans text-xs border-b pb-4 mb-6">
-                    <div className="flex justify-between text-[#1A1A1A]/60"><span>Items Subtotal</span><span>₹{tentativeSubtotal}</span></div>
-                    <div className="flex justify-between text-sm font-bold pt-1 text-[#7D5A34]"><span>Total Tentative Amount</span><span>₹{tentativeSubtotal}</span></div>
+                    <div className="flex justify-between text-[#1A1A1A]/60"><span>Subtotal</span><span>₹{tentativeSubtotal}</span></div>
+                    <div className="flex justify-between text-sm font-bold pt-1 text-[#7D5A34]"><span>Total </span><span>₹{tentativeSubtotal}</span></div>
                   </div>
                   <div className="flex gap-4 w-full justify-end font-sans">
                     <button onClick={() => setIsCartMaximized(false)} className="border border-[#1A1A1A]/20 px-6 py-3 uppercase tracking-wider font-bold text-[10px] hover:bg-[#1A1A1A]/5 transition-colors">Keep Browsing</button>
-                    <a href="/cart" className="bg-[#1A1A1A] text-white px-6 py-3 uppercase tracking-wider font-bold text-[10px] hover:bg-[#7D5A34] transition-colors">Review Selection</a>
+                    <a href="/cart" className="bg-[#1A1A1A] text-white px-6 py-3 uppercase tracking-wider font-bold text-[10px] hover:bg-[#7D5A34] transition-colors">Proceed to Checkout</a>
                   </div>
                 </div>
               </div>

@@ -152,72 +152,77 @@ export default function HeaderWrapper() {
         </div>
       </header>
 
-      {/* ─────────── MOBILE header (< lg) ─────────── */}
-      <header className="lg:hidden px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
+      {/* ─────────── MOBILE header (< lg) ───────────
+          Compact single-line bar: 52px logo + small title + cart ☰.
+          Search moves into the dropdown; account row lives at the bottom of it. */}
+      <header className="lg:hidden px-4 py-2.5">
+        <div className="flex items-center justify-between">
 
-          <a href="/" className="flex items-center gap-3 flex-shrink-0">
-            <div className="relative w-12 h-12 flex-shrink-0 select-none bg-transparent">
+          <a href="/" className="flex items-center gap-3 min-w-0">
+            <div className="relative w-[52px] h-[52px] flex-shrink-0 select-none bg-transparent">
               <Image src="/logo.svg?v=4" alt="Idarah-i Adabiyat-i Dilli Emblem" fill className="object-contain mix-blend-multiply" priority />
             </div>
-            <div className="flex flex-col justify-center">
-              <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif" }}
-                className="text-lg font-bold tracking-wider uppercase text-[#1A1A1A] leading-none">
-                Idarah-i Adabiyat-i Delli
-              </h1>
-            </div>
+            <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif" }}
+              className="text-xs sm:text-sm md:text-base font-bold tracking-wider uppercase text-[#1A1A1A] leading-none whitespace-nowrap truncate min-w-0">
+              Idarah-i Adabiyat-i Delli
+            </h1>
           </a>
 
-          <div className="flex items-center gap-2">
-            {!isBooksPage && (
-              <button onClick={handleSearchIconClick} aria-label="Search" className="p-2 text-[#1A1A1A] hover:text-[#7D5A34] transition-colors">
-                <Search className="w-5 h-5" strokeWidth={2} />
-              </button>
-            )}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <a
               href="/cart"
               aria-label={`Cart, ${totalItems} item${totalItems === 1 ? '' : 's'}`}
-              className="relative w-10 h-10 rounded-full border border-[#1A1A1A]/15 bg-white text-[#1A1A1A] flex items-center justify-center hover:bg-[#1A1A1A] hover:text-[#FBFBFA] transition-all"
+              className="relative w-9 h-9 rounded-full border border-[#1A1A1A]/15 bg-white text-[#1A1A1A] flex items-center justify-center hover:bg-[#1A1A1A] hover:text-[#FBFBFA] transition-all"
             >
-              <ShoppingCart className="w-5 h-5" strokeWidth={1.75} />
+              <ShoppingCart className="w-[18px] h-[18px]" strokeWidth={1.75} />
               {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none ring-2 ring-[#FBFBFA]">
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-red-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none ring-2 ring-[#FBFBFA]">
                   {totalItems > 99 ? '99+' : totalItems}
                 </span>
               )}
             </a>
-            {!authLoading && (
-              <a
-                href={user ? '/profile' : '/login'}
-                aria-label={userAriaLabel}
-                className="w-10 h-10 rounded-full bg-[#7D5A34] text-white flex items-center justify-center font-sans text-[11px] font-bold tracking-wider hover:bg-[#1A1A1A] transition-all"
-              >
-                {user ? initials : <User className="w-5 h-5" strokeWidth={1.75} />}
-              </a>
-            )}
             <button onClick={() => setMobileMenuOpen(o => !o)} aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-              className="p-2 text-[#1A1A1A] hover:text-[#7D5A34] transition-colors">
+              className="w-9 h-9 flex items-center justify-center text-[#1A1A1A] hover:text-[#7D5A34] transition-colors">
               {mobileMenuOpen ? <X className="w-5 h-5" strokeWidth={2} /> : <Menu className="w-5 h-5" strokeWidth={2} />}
             </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile dropdown menu */}
+      {/* Mobile dropdown menu — full-width panel beneath the header */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-[#1A1A1A]/10 bg-[#FBFBFA] px-4 py-3 space-y-0.5">
-          {NAV_LINKS.map(({ href, label, Icon }) => {
-            const isActive = pathname === href;
-            const isCatalogue = href === '/books';
-            return (
-              <a key={href} href={href}
-                className={`flex items-center gap-3 px-3 py-3 font-sans text-sm font-semibold tracking-wide transition-colors rounded-sm ${isActive ? 'bg-[#7D5A34]/10 text-[#7D5A34]' : 'text-[#1A1A1A] hover:bg-[#1A1A1A]/5'} ${isCatalogue ? 'border-l-2 border-[#7D5A34]' : ''}`}
-                onClick={() => setMobileMenuOpen(false)}>
-                <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={isCatalogue ? 2.5 : 2} />
-                <span className={isCatalogue ? 'uppercase tracking-wider' : ''}>{label}</span>
+        <div className="lg:hidden border-t border-[#1A1A1A]/10 bg-[#FBFBFA]">
+          <nav className="px-4 py-2 font-sans">
+            {NAV_LINKS.map(({ href, label, Icon }) => {
+              const isActive = pathname === href;
+              return (
+                <a key={href} href={href}
+                  className={`flex items-center gap-3 px-3 py-3 text-xs font-bold uppercase tracking-widest transition-colors rounded-sm ${isActive ? 'bg-[#7D5A34]/10 text-[#7D5A34]' : 'text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}
+                  onClick={() => setMobileMenuOpen(false)}>
+                  <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2} />
+                  <span>{label}</span>
+                </a>
+              );
+            })}
+
+            <div className="my-2 border-t border-[#1A1A1A]/10" />
+
+            <button onClick={handleSearchIconClick}
+              className="w-full flex items-center gap-3 px-3 py-3 text-xs font-bold uppercase tracking-widest text-[#1A1A1A] hover:bg-[#1A1A1A]/5 transition-colors rounded-sm">
+              <Search className="w-4 h-4 flex-shrink-0" strokeWidth={2} />
+              <span>Search</span>
+            </button>
+
+            {!authLoading && (
+              <a href={user ? '/profile' : '/login'} onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-3 text-xs font-bold uppercase tracking-widest text-[#1A1A1A] hover:bg-[#1A1A1A]/5 transition-colors rounded-sm">
+                <span className="w-5 h-5 rounded-full bg-[#7D5A34] text-white flex items-center justify-center font-sans text-[8px] font-bold">
+                  {user ? initials : <User className="w-3.5 h-3.5" strokeWidth={2} />}
+                </span>
+                <span>{user ? (user.displayName || 'Account') : 'Sign In'}</span>
               </a>
-            );
-          })}
+            )}
+          </nav>
         </div>
       )}
     </div>

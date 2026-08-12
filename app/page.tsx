@@ -303,7 +303,7 @@ export default function HomePage() {
           onClick={() => setSelectedBookId(book._id)}
           className="cursor-pointer text-left block flex-grow w-full bg-transparent"
         >
-          <div className="aspect-[3/4] bg-[#1A1A1A]/5 border border-[#1A1A1A]/10 w-full mb-4 flex items-center justify-center relative overflow-hidden">
+          <div className="aspect-[3/4] bg-[#1A1A1A]/5 border border-[#1A1A1A]/10 w-full max-w-[240px] md:max-w-none mx-auto md:mx-0 mb-4 flex items-center justify-center relative overflow-hidden">
             {book.coverImage ? (
               <img src={urlFor(book.coverImage).width(400).url()} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             ) : (
@@ -345,8 +345,10 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#FBFBFA] text-[#1A1A1A] font-serif selection:bg-[#7D5A34]/20 relative">
 
-      {/* Hero — image-only, personalised → collection banners → cover fallback */}
-      <section className="border-b border-[#1A1A1A]/10 py-6 px-6">
+      {/* Hero — image-only, personalised → collection banners → cover fallback
+          Mobile: full-bleed banner with a small breathing gap (py-2) above/below.
+          Desktop (md+) keeps the original py-6 / side padding. */}
+      <section className="border-b border-[#1A1A1A]/10 py-2 md:py-6 px-0 sm:px-6">
         {hasHeroSlides && activeSlide ? (
           <div className="max-w-7xl mx-auto relative">
             {(() => {
@@ -388,16 +390,16 @@ export default function HomePage() {
                 <button
                   onClick={() => setCurrentSlide(p => p - 1 + heroSlides.length)}
                   aria-label="Previous slide"
-                  className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 bg-[#1A1A1A] hover:bg-[#7D5A34] text-white shadow-md rounded-full p-2.5 transition-all cursor-pointer z-10 focus:outline-none"
+                  className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 bg-[#1A1A1A]/75 md:bg-[#1A1A1A] hover:bg-[#7D5A34] text-white shadow-md rounded-full p-1.5 md:p-2.5 transition-all cursor-pointer z-10 focus:outline-none"
                 >
-                  <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
+                  <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.5} />
                 </button>
                 <button
                   onClick={() => setCurrentSlide(p => p + 1)}
                   aria-label="Next slide"
-                  className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 bg-[#1A1A1A] hover:bg-[#7D5A34] text-white shadow-md rounded-full p-2.5 transition-all cursor-pointer z-10 focus:outline-none"
+                  className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 bg-[#1A1A1A]/75 md:bg-[#1A1A1A] hover:bg-[#7D5A34] text-white shadow-md rounded-full p-1.5 md:p-2.5 transition-all cursor-pointer z-10 focus:outline-none"
                 >
-                  <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
+                  <ChevronRight className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.5} />
                 </button>
 
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
@@ -423,18 +425,20 @@ export default function HomePage() {
         )}
       </section>
 
-      <main className="max-w-7xl mx-auto px-6 py-12 flex flex-col lg:flex-row gap-12">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-4 md:pt-10 lg:pt-12 pb-12 flex flex-col lg:flex-row gap-8 lg:gap-12">
 
         <div className="flex-grow lg:max-w-[72%]">
 
           {/* ── For You ── shown only when history produces results ── */}
           {!loading && hasRecommendations && (
-            <div className="mb-14">
-              <div className="border-b border-[#1A1A1A]/10 pb-4 mb-8">
-                <h3 className="text-2xl font-normal">For You</h3>
+            <div className="mb-10 md:mb-14">
+              <div className="border-b border-[#1A1A1A]/10 pb-3 md:pb-4 mb-6 md:mb-8">
+                <span className="font-sans text-[9px] uppercase tracking-[0.25em] font-bold text-[#7D5A34] block mb-1">Recommended</span>
+                <h3 className="text-xl md:text-2xl font-bold">Recommended For You</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {recommendations.map((r) => renderBookCard(r as Book))}
+
               </div>
             </div>
           )}
@@ -521,8 +525,8 @@ export default function HomePage() {
               <BookOpen className="w-4 h-4 text-[#7D5A34]" strokeWidth={1.5} />
               <span className="font-sans text-[9px] uppercase tracking-[0.25em] font-bold text-[#7D5A34]">Publications</span>
             </div>
-            <h3 className="text-2xl font-normal">Featured Academic Publications</h3>
-            <p className="font-sans text-[10px] uppercase tracking-wider text-[#1A1A1A]/50 mt-1">Exceptional translations and historical reference catalogs</p>
+            <h3 className="text-2xl font-bold">From Our Press</h3>
+            <p className="font-sans text-[10px] uppercase tracking-wider text-[#1A1A1A]/50 mt-1">Selected works from Idarah-i Adabiyat-i Delli</p>
           </div>
 
           {loading ? (
@@ -534,12 +538,14 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Right Sidebar — cart pinned above How To Order per design brief */}
-        <div className="w-full lg:w-[28%] flex flex-col gap-6 lg:sticky lg:top-[200px] h-fit self-start transition-all duration-300">
+                 {/* Right Sidebar — sticky cart */}
+          <div className="w-full lg:w-[28%] flex flex-col gap-6 lg:sticky lg:top-[180px] self-start transition-all duration-300">
+
 
           {/* ── Selection / Cart drawer ── (rendered first so it sits above How To Order) */}
           {isCartOpen && (
-            <div className="bg-white border border-[#1A1A1A]/10 rounded-sm shadow-sm overflow-hidden transition-all duration-300">
+            <div className="w-full lg:w-[464px] max-w-full lg:max-w-none bg-white border border-[#1A1A1A]/10 rounded-sm shadow-sm overflow-hidden transition-all duration-300 max-h-[calc(100vh-180px)] flex flex-col">
+
 
               {/* Header — cream band, bronze avatar, serif title */}
               <div className="bg-[#7D5A34]/10 px-5 py-4 flex items-center gap-3">
@@ -573,7 +579,7 @@ export default function HomePage() {
               </div>
 
               {/* Body */}
-              <div className="px-5 pt-4 pb-3">
+              <div className="px-5 pt-4 pb-3 max-h-[46vh] overflow-y-auto">
                 {cart.length === 0 ? (
                   <div className="py-8 text-center">
                     <p className="font-sans text-[11px] text-[#1A1A1A]/40 italic mb-3">Your selection is empty.</p>
@@ -629,7 +635,7 @@ export default function HomePage() {
                     href="/checkout"
                     className="block text-center bg-[#1A1A1A] text-white mx-5 py-3.5 font-sans text-xs font-bold uppercase tracking-widest hover:bg-[#7D5A34] transition-colors rounded-sm"
                   >
-                    Review Invoice &amp; Checkout
+                    Complete Order
                   </a>
                   <button
                     onClick={handleClearCart}
@@ -642,54 +648,8 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* ── How To Order — beneath the cart ── */}
-          <div className="bg-white border border-[#1A1A1A]/10 rounded-sm shadow-sm overflow-hidden">
-            <div className="bg-[#7D5A34]/5 border-b border-[#7D5A34]/15 px-5 py-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-[#7D5A34] text-white flex items-center justify-center">
-                <ClipboardList className="w-4 h-4" strokeWidth={2} />
-              </div>
-              <div>
-                <span className="block font-sans text-[9px] font-bold tracking-[0.25em] uppercase text-[#7D5A34]">Ordering Guide</span>
-                <h4 className="font-serif text-base leading-tight text-[#1A1A1A]">How To Order</h4>
-              </div>
-            </div>
-
-            <ol className="p-5 space-y-3">
-              <li className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-[#1A1A1A]/5 text-[#7D5A34] flex items-center justify-center flex-shrink-0">
-                  <ClipboardList className="w-3.5 h-3.5" strokeWidth={2} />
-                </div>
-                <p className="font-sans text-[11px] leading-relaxed text-[#1A1A1A]/75">
-                  Compile your selection from the catalog.
-                </p>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-[#1A1A1A]/5 text-[#7D5A34] flex items-center justify-center flex-shrink-0">
-                  <MessageCircle className="w-3.5 h-3.5" strokeWidth={2} />
-                </div>
-                <p className="font-sans text-[11px] leading-relaxed text-[#1A1A1A]/75">
-                  Submit via WhatsApp or the checkout form.
-                </p>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-[#1A1A1A]/5 text-[#7D5A34] flex items-center justify-center flex-shrink-0">
-                  <Truck className="w-3.5 h-3.5" strokeWidth={2} />
-                </div>
-                <p className="font-sans text-[11px] leading-relaxed text-[#1A1A1A]/75">
-                  We verify stock, apply discounts, and quote India Post shipping.
-                </p>
-              </li>
-            </ol>
-
-            <a
-              href="/how-to-order"
-              className="group flex items-center justify-center gap-2 bg-[#1A1A1A] text-white hover:bg-[#7D5A34] font-sans text-[10px] font-bold uppercase tracking-widest py-3 transition-colors"
-            >
-              Full Shipping Terms
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
-            </a>
+         
           </div>
-        </div>
 
       </main>
 

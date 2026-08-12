@@ -109,7 +109,7 @@ export default function LoginPage() {
   };
 
   const selectedMeta = ACCOUNT_TYPES.find(t => t.value === accountType);
-  const googleLabel = isRegistering ? 'Sign up with Google' : 'Continue with Google';
+  const googleLabel = isRegistering ? 'Sign up with Google' : 'Sign in with Google';
 
   return (
     <div className="min-h-screen bg-[#FBFBFA] text-[#1A1A1A] flex items-center justify-center px-6 py-12 font-sans relative">
@@ -119,13 +119,13 @@ export default function LoginPage() {
           onClick={() => router.push('/')}
           className="flex items-center gap-2 text-xs uppercase tracking-widest font-bold text-[#1A1A1A] bg-white border border-[#1A1A1A]/20 hover:border-[#1A1A1A] px-4 py-2.5 transition-all shadow-sm rounded-sm"
         >
-          ← Return to Home
+          ← Keep Browsing
         </button>
       </div>
 
       <div className="max-w-md w-full bg-white border border-[#1A1A1A]/10 p-8 shadow-sm rounded-sm">
         <h2 className="font-serif text-2xl font-normal text-center mb-1">
-          {isRegistering ? 'Create Scholar Dossier' : 'Sign In to Archive'}
+          {isRegistering ? 'Create Scholar Dossier' : 'Sign In to Explore'}
         </h2>
         <p className="text-[10px] text-[#7D5A34] text-center tracking-widest uppercase font-semibold mb-6">
           Idarah-i Adabiyat-i Dilli
@@ -195,7 +195,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-[#1A1A1A] hover:bg-[#7D5A34] text-white text-xs font-bold uppercase tracking-widest py-3.5 transition-colors rounded-sm disabled:opacity-50"
           >
-            {loading ? 'Verifying Credentials...' : isRegistering ? 'Register Account' : 'Access Portfolio'}
+            {loading ? 'Verifying Credentials...' : isRegistering ? 'Register Account' : 'Sign In'}
           </button>
         </form>
 
