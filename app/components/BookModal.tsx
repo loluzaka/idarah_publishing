@@ -288,7 +288,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1A1A]/40 backdrop-blur-sm">
         <div className="bg-[#FBFBFA] border border-[#1A1A1A]/10 p-8 text-center max-w-sm shadow-xl">
           <p className="font-sans text-xs tracking-widest uppercase text-[#1A1A1A]/60 animate-pulse">
-            Retrieving Archival Plates...
+            Retrieving Book information....
           </p>
         </div>
       </div>
@@ -351,7 +351,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                 onClick={() => setActiveTab('preview')}
                 className={`px-3 py-1.5 transition-colors border ${activeTab === 'preview' ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]' : 'border-transparent hover:text-[#1A1A1A]'}`}
               >
-                View Inside ({validPreviewImages.length})
+                Peek Inside ({validPreviewImages.length})
               </button>
             )}
           </div>
@@ -418,9 +418,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
             )}
           </div>
 
-          <div className="p-3 bg-[#7D5A34]/5 border-t border-[#1A1A1A]/10 text-center font-sans text-[9px] uppercase tracking-widest text-[#7D5A34] font-bold">
-            Interactive Academic Resource Reader
-          </div>
+          
         </div>
 
         {/* ── Right: Metadata, Pricing, Reviews, Related ── */}
@@ -490,7 +488,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
 
             {/* Description */}
             <div className="text-xs font-sans leading-relaxed text-[#1A1A1A]/80 border-b border-[#1A1A1A]/5 pb-6 mb-6">
-              <h4 className="font-sans text-[10px] tracking-widest uppercase font-bold text-[#1A1A1A]/40 mb-2">Abstract & Core Index</h4>
+              <h4 className="font-sans text-[10px] tracking-widest uppercase font-bold text-[#1A1A1A]/40 mb-2">Abstract</h4>
               {book.description ? (
                 <p>{book.description}</p>
               ) : (
@@ -667,7 +665,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                 disabled={!canBuy}
                 className="flex-grow font-sans text-xs font-bold uppercase tracking-widest bg-[#1A1A1A] hover:bg-[#7D5A34] text-white py-4 text-center transition-colors border border-[#1A1A1A] hover:border-[#7D5A34] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#1A1A1A] disabled:hover:border-[#1A1A1A]"
               >
-                {canBuy ? 'Request Plate to Cart' : 'Out of Stock'}
+                {canBuy ? 'Add to Cart' : 'Out of Stock'}
               </button>
             </div>
           </div>

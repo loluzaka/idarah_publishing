@@ -337,18 +337,18 @@ export default function BooksPage() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <Library className="w-4 h-4 text-[#7D5A34]" strokeWidth={1.5} />
-                  <span className="font-sans text-[9px] uppercase tracking-[0.25em] font-bold text-[#7D5A34]">Archive</span>
+                  <span className="font-sans text-[9px] uppercase tracking-[0.25em] font-bold text-[#7D5A34]">Catalogue</span>
                 </div>
-                <h2 className="text-3xl md:text-4xl font-normal tracking-tight mb-1">Catalogue</h2>
+                <h2 className="text-3xl md:text-4xl font-normal tracking-tight mb-1">Publications</h2>
                 <p className="font-sans text-[10px] uppercase tracking-wider text-[#1A1A1A]/50">
-                  Browse our complete collection of historical literature
+                  Explore the complete collection of books published by Idarah-i Adabiyat-i Delli
                 </p>
               </div>
               <button
                 onClick={() => window.open('/idarah-catalog-2026.pdf', '_blank')}
                 className="font-sans text-[10px] font-bold uppercase tracking-wider border border-[#7D5A34] text-[#7D5A34] hover:bg-[#7D5A34] hover:text-[#FBFBFA] px-3 py-2 transition-all hidden sm:block"
               >
-                PDF Catalog
+                Catalogue PDF
               </button>
             </div>
 
@@ -359,7 +359,7 @@ export default function BooksPage() {
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Search by title, author, ISBN, subject, language..."
+                  placeholder="Search by title, author, subject, ISBN, or language..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') commitSearch(searchQuery); }}
@@ -601,15 +601,13 @@ export default function BooksPage() {
 
                           {/* Right — editorial label + Explore CTA */}
                           <div className="w-full md:w-1/2 px-8 pb-8 md:py-10 md:pr-12 flex flex-col justify-center text-white text-right">
-                            <span className="font-sans text-[9px] font-bold tracking-[0.35em] uppercase text-[#F5D7A1] block mb-3">
-                              Theme {String((currentSlide % themes.length) + 1).padStart(2, '0')} / {String(themes.length).padStart(2, '0')}
-                            </span>
+                            
                             <h2 className="font-serif text-3xl md:text-5xl font-normal leading-tight tracking-tight mb-3">
                               {activeTheme.category.title}
                             </h2>
                             <p className="font-sans text-xs md:text-sm text-white/80 leading-relaxed mb-6 max-w-md ml-auto">
-                              {activeTheme.books.length} publication{activeTheme.books.length !== 1 ? 's' : ''} in this collection.
-                              Click any cover to view its dossier, or explore the full theme below.
+                            
+Discover works in our {activeTheme.category.title} collection. Click on any cover to view detailed publication notes, or explore the full category below
                             </p>
                             <button
                               onClick={() => scrollToTheme(activeTheme.category.slug.current)}
@@ -662,8 +660,8 @@ export default function BooksPage() {
                 <section className="mb-16 border-b border-[#1A1A1A]/10 pb-12">
                   <div className="flex justify-between items-baseline mb-8">
                     <div>
-                      <span className="font-sans text-[9px] uppercase tracking-[0.2em] font-bold text-[#7D5A34] block mb-1">Curated Selection</span>
-                      <h3 className="text-2xl font-normal">Recent Acquisitions</h3>
+                      <span className="font-sans text-[9px] uppercase tracking-[0.2em] font-bold text-[#7D5A34] block mb-1">FEATURED</span>
+                      <h3 className="text-2xl font-normal">Handpicked Titles</h3>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -689,11 +687,11 @@ export default function BooksPage() {
                     <div className="flex justify-between items-baseline mb-8">
                       <div>
                         <span className="font-sans text-[9px] uppercase tracking-[0.2em] font-bold text-[#7D5A34] block mb-1">
-                          Theme {String(i + 1).padStart(2, '0')}
+                          CATEGORY
                         </span>
                         <h3 className="text-2xl md:text-3xl font-normal">{theme.category.title}</h3>
                         <p className="font-sans text-[10px] uppercase tracking-wider text-[#1A1A1A]/50 mt-1">
-                          {theme.books.length} publication{theme.books.length !== 1 ? 's' : ''}
+                          {theme.books.length} Title{theme.books.length !== 1 ? 's' : ''} Available
                         </p>
                       </div>
                     </div>
