@@ -142,7 +142,7 @@ const shipping = useMemo(() => calculateShipping(
   <div class="header">
     <div class="brand">
       <h1>Idarah-i Adabiyat-i Dilli</h1>
-      <p>Associated with Jayyad Press</p>
+      
     </div>
     <div class="meta">
       <div><strong>Order ID:</strong> ${generatedOrderId}</div>

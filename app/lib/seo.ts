@@ -4,9 +4,9 @@ import type { Metadata } from 'next';
 
 export const SITE = {
   name: 'Idarah-i Adabiyat-i Dilli',
-  tagline: 'Associated with Jayyad Press · Classical Publications & Historical Literature',
+  tagline: 'Classical Publications & Historical Literature',
   description:
-    'Idarah-i Adabiyat-i Dilli — publishing house associated with Jayyad Press. Curated catalog of Urdu literature, historical translations, and academic reference works from Delhi since 1970.',
+    'Idarah-i Adabiyat-i Dilli — publishing house . Curated catalog of Urdu literature, historical translations, and academic reference works from Delhi since 1970.',
   // Set NEXT_PUBLIC_SITE_URL in .env.local (e.g. https://idarah-adabiyat.com)
   url: process.env.NEXT_PUBLIC_SITE_URL || 'https://idarah-adabiyat.example.com',
   ogImage: '/og-default.jpg',

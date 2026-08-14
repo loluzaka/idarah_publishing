@@ -48,7 +48,7 @@ export default function NotFound() {
         </div>
 
         <p className="font-sans text-[10px] text-[#1A1A1A]/30 mt-12 uppercase tracking-widest">
-          Idarah-i Adabiyat-i Dilli · Associated with Jayyad Press
+          Idarah-i Adabiyat-i Dilli 
         </p>
       </div>
     </div>

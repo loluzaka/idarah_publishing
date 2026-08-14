@@ -47,9 +47,7 @@ export default function Footer() {
             >
               Idarah-i Adabiyat-i Dilli
             </h2>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-[#7D5A34] font-bold mb-4">
-              Associated with Jayyad Press
-            </p>
+            
             <p className="text-xs text-[#FBFBFA]/60 leading-relaxed font-sans">
               A premium publishing house specialising in Islamic Studies, Urdu
               Literature, Arabic Literature, History, Biography, and
