@@ -424,8 +424,8 @@ export default function BooksPage() {
                 <section className="mb-14">
                   {(() => {
                     const bgUrl = activeTheme.coverImage
-                      ? (() => { try { return urlFor(activeTheme.coverImage).width(1920).height(700).fit('crop').url(); } catch { return null; } })()
-                      : null;
+  ? (() => { try { return urlFor(activeTheme.coverImage).width(1920).fit('max').url(); } catch { return null; } })()
+  : null;
                     // 3 auto-picked book covers: prefer this theme's books, fall back to any book with a cover
                     const themeWithCovers = activeTheme.books.filter(b => b.coverImage);
                     const deskBooks = themeWithCovers.length > 0

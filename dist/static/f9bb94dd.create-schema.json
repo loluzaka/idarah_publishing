@@ -1,0 +1,732 @@
+[
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "level": "error",
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "message": "An author name is required."
+          }
+        ],
+        "name": "name",
+        "type": "string",
+        "title": "Author Name"
+      },
+      {
+        "options": {
+          "source": "name",
+          "maxLength": 96
+        },
+        "validation": [
+          {
+            "level": "error",
+            "rules": [
+              {
+                "flag": "custom"
+              },
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ]
+          }
+        ],
+        "name": "slug",
+        "type": "slug"
+      },
+      {
+        "description": "e.g., Professor of History, Advocate General",
+        "name": "qualifications",
+        "type": "string",
+        "title": "Qualifications / Role"
+      },
+      {
+        "description": "A short overview of the author displayed on the primary card grid.",
+        "name": "biography",
+        "type": "text",
+        "title": "Brief Biography"
+      },
+      {
+        "options": {
+          "layout": "tags"
+        },
+        "description": "Tags representing what they write about (e.g., Urdu Literature, History)",
+        "of": [
+          {
+            "type": "string"
+          }
+        ],
+        "name": "topics",
+        "type": "array",
+        "title": "Topics of Books (Genres/Expertise)"
+      },
+      {
+        "description": "Select the books this author has written.",
+        "of": [
+          {
+            "to": [
+              {
+                "type": "book"
+              }
+            ],
+            "type": "reference",
+            "title": "Reference to publications archive"
+          }
+        ],
+        "name": "books",
+        "type": "array",
+        "title": "Linked Publications Reference Archive"
+      }
+    ],
+    "name": "author",
+    "type": "document",
+    "title": "Authors & Contributors"
+  },
+  {
+    "fields": [
+      {
+        "name": "title",
+        "type": "string",
+        "title": "Book Title"
+      },
+      {
+        "validation": [
+          {
+            "level": "error",
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ]
+          }
+        ],
+        "description": "Link this book to an official Author Profile document card.",
+        "to": [
+          {
+            "type": "author"
+          }
+        ],
+        "name": "author",
+        "type": "reference",
+        "title": "Author / Translator"
+      },
+      {
+        "name": "price",
+        "type": "number",
+        "title": "Price (₹)"
+      },
+      {
+        "validation": [
+          {
+            "level": "error",
+            "rules": [
+              {
+                "flag": "min",
+                "constraint": 0
+              },
+              {
+                "flag": "custom"
+              }
+            ],
+            "message": "Original price cannot be negative."
+          }
+        ],
+        "description": "Optional. If set and greater than the selling Price, the book is shown as on sale with a computed discount.",
+        "name": "originalPrice",
+        "type": "number",
+        "title": "Original Retail Price (INR)"
+      },
+      {
+        "name": "series",
+        "type": "string",
+        "title": "Series / Volume Note"
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "title": "Editorial Synopsis"
+      },
+      {
+        "name": "publisher",
+        "type": "string"
+      },
+      {
+        "name": "year",
+        "type": "string",
+        "title": "Release Year"
+      },
+      {
+        "name": "binding",
+        "type": "string",
+        "title": "Format Binding"
+      },
+      {
+        "name": "pages",
+        "type": "number",
+        "title": "Page Count"
+      },
+      {
+        "validation": [
+          {
+            "level": "error",
+            "rules": [
+              {
+                "flag": "custom"
+              }
+            ]
+          }
+        ],
+        "description": "International Standard Book Number (10 or 13 digits, hyphens optional). Leave empty for historical publications without an ISBN.",
+        "name": "isbn",
+        "type": "string",
+        "title": "ISBN"
+      },
+      {
+        "validation": [
+          {
+            "level": "error",
+            "rules": [
+              {
+                "flag": "min",
+                "constraint": 0
+              }
+            ]
+          }
+        ],
+        "description": "Physical weight of one copy. Used to compute India Post Gyan Post shipping. Estimate for hardcovers: pages × 2g; paperbacks: pages × 1.5g.",
+        "name": "weightGrams",
+        "type": "number",
+        "title": "Weight (grams)"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Urdu",
+              "value": "Urdu"
+            },
+            {
+              "title": "English",
+              "value": "English"
+            },
+            {
+              "title": "Hindi",
+              "value": "Hindi"
+            },
+            {
+              "title": "Arabic",
+              "value": "Arabic"
+            },
+            {
+              "title": "Persian (Farsi)",
+              "value": "Persian"
+            },
+            {
+              "title": "Bilingual — Urdu / English",
+              "value": "Bilingual (Urdu/English)"
+            },
+            {
+              "title": "Bilingual — Arabic / Urdu",
+              "value": "Bilingual (Arabic/Urdu)"
+            }
+          ],
+          "layout": "dropdown"
+        },
+        "description": "Primary language of the publication.",
+        "name": "language",
+        "type": "string"
+      },
+      {
+        "initialValue": 10,
+        "validation": [
+          {
+            "level": "error",
+            "rules": [
+              {
+                "flag": "min",
+                "constraint": 0
+              }
+            ],
+            "message": "Stock must be zero or a positive whole number."
+          }
+        ],
+        "description": "Number of copies currently in inventory. 0 = Out of Stock. 1-5 = shows \"Only X Left\". Leave blank to display \"In Stock\" by default. Managed manually.",
+        "name": "stock",
+        "type": "number",
+        "title": "Stock (Copies Available)"
+      },
+      {
+        "to": [
+          {
+            "type": "category"
+          }
+        ],
+        "name": "category",
+        "type": "reference",
+        "title": "Category Link"
+      },
+      {
+        "of": [
+          {
+            "to": [
+              {
+                "type": "category"
+              }
+            ],
+            "type": "reference",
+            "title": "Reference to category tabs"
+          }
+        ],
+        "name": "categories",
+        "type": "array"
+      },
+      {
+        "description": "Short text shown when no cover image is available (e.g. initials).",
+        "name": "coverPlaceholder",
+        "type": "string",
+        "title": "Cover Placeholder Text"
+      },
+      {
+        "description": "Photos of the table of contents, preface, index, or any introductory pages. Shown in the \"Showcase & Contents\" tab of the Book Modal alongside the cover.",
+        "of": [
+          {
+            "options": {
+              "hotspot": true
+            },
+            "type": "image"
+          }
+        ],
+        "name": "contentsImages",
+        "type": "array",
+        "title": "Contents & Preface Pages"
+      },
+      {
+        "description": "Interior page scans for the \"View Inside\" reader. Customers can flip through these before purchasing. Upload in reading order.",
+        "of": [
+          {
+            "options": {
+              "hotspot": true
+            },
+            "type": "image"
+          }
+        ],
+        "name": "previewImages",
+        "type": "array",
+        "title": "Look Inside — Sample Pages"
+      },
+      {
+        "options": {
+          "hotspot": true
+        },
+        "description": "Main book cover. Recommended: 400 × 533 px (3:4 portrait). Used on all book cards, the modal, and the catalog.",
+        "name": "coverImage",
+        "type": "image",
+        "title": "Primary Cover Image"
+      },
+      {
+        "description": "Optional. Each slide promotes this book on the personalized homepage carousel when the book is recommended to a user. Leave empty if this book has no promo slides.",
+        "of": [
+          {
+            "fields": [
+              {
+                "options": {
+                  "hotspot": true
+                },
+                "validation": [
+                  {
+                    "level": "error",
+                    "rules": [
+                      {
+                        "flag": "presence",
+                        "constraint": "required"
+                      }
+                    ],
+                    "message": "A slide image is required."
+                  }
+                ],
+                "description": "Recommended dimensions: 1920 × 700 px (aspect ratio 2.74:1). Upload wide banner artwork.",
+                "name": "image",
+                "type": "image",
+                "title": "Slide Image"
+              },
+              {
+                "validation": [
+                  {
+                    "level": "error",
+                    "rules": [
+                      {
+                        "flag": "presence",
+                        "constraint": "required"
+                      }
+                    ]
+                  }
+                ],
+                "name": "heading",
+                "type": "string"
+              },
+              {
+                "rows": 2,
+                "name": "subheading",
+                "type": "text"
+              },
+              {
+                "name": "buttonText",
+                "type": "string"
+              },
+              {
+                "validation": [
+                  {
+                    "level": "error",
+                    "rules": [
+                      {
+                        "flag": "uri",
+                        "constraint": {
+                          "options": {
+                            "scheme": [
+                              "/^http$/",
+                              "/^https$/",
+                              "/^mailto$/",
+                              "/^tel$/"
+                            ],
+                            "allowRelative": true,
+                            "relativeOnly": false,
+                            "allowCredentials": false
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "description": "Optional. Full URL or internal path (e.g. /books).",
+                "name": "buttonLink",
+                "type": "url"
+              },
+              {
+                "initialValue": 100,
+                "description": "Slides with a lower number appear first. Ties fall back to Studio order.",
+                "name": "priority",
+                "type": "number"
+              }
+            ],
+            "type": "object",
+            "name": "homepageSlide"
+          }
+        ],
+        "name": "homepageSlides",
+        "type": "array",
+        "title": "Homepage Promotional Slides"
+      }
+    ],
+    "name": "book",
+    "type": "document",
+    "title": "Publications Archive"
+  },
+  {
+    "fields": [
+      {
+        "name": "title",
+        "type": "string",
+        "title": "Category Title"
+      },
+      {
+        "options": {
+          "source": "title"
+        },
+        "validation": [
+          {
+            "level": "error",
+            "rules": [
+              {
+                "flag": "custom"
+              }
+            ]
+          }
+        ],
+        "name": "slug",
+        "type": "slug",
+        "title": "Slug Identifier"
+      },
+      {
+        "options": {
+          "hotspot": true
+        },
+        "description": "Wide banner shown in the Catalogue page slideshow for this theme. Recommended: 1920 × 700 px (aspect ratio ~2.74:1).",
+        "name": "bannerImage",
+        "type": "image",
+        "title": "Theme Banner Image"
+      }
+    ],
+    "name": "category",
+    "type": "document",
+    "title": "Category Tabs"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "level": "error",
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ]
+          }
+        ],
+        "name": "title",
+        "type": "string",
+        "title": "Collection Title"
+      },
+      {
+        "options": {
+          "source": "title",
+          "maxLength": 96
+        },
+        "validation": [
+          {
+            "level": "error",
+            "rules": [
+              {
+                "flag": "custom"
+              },
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ]
+          }
+        ],
+        "name": "slug",
+        "type": "slug"
+      },
+      {
+        "rows": 3,
+        "name": "description",
+        "type": "text"
+      },
+      {
+        "options": {
+          "hotspot": true
+        },
+        "description": "Recommended: 1920 × 400 px. Shown at the top of the /collections/[slug] page.",
+        "name": "bannerImage",
+        "type": "image"
+      },
+      {
+        "options": {
+          "hotspot": true
+        },
+        "description": "Optional square or landscape thumbnail for compact homepage widgets.",
+        "name": "thumbnailImage",
+        "type": "image",
+        "title": "Homepage Thumbnail (optional)"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "Carousel (horizontal scrolling row)",
+              "value": "carousel"
+            },
+            {
+              "title": "Grid (multi-column grid)",
+              "value": "grid"
+            },
+            {
+              "title": "Featured Banner (large promotional banner)",
+              "value": "featured_banner"
+            }
+          ],
+          "layout": "radio"
+        },
+        "initialValue": "carousel",
+        "description": "Controls how this collection is rendered on the homepage.",
+        "name": "displayStyle",
+        "type": "string"
+      },
+      {
+        "initialValue": false,
+        "description": "Featured collections are automatically displayed on the homepage.",
+        "name": "featured",
+        "type": "boolean",
+        "title": "Show on Homepage"
+      },
+      {
+        "initialValue": true,
+        "description": "Disabled collections are hidden everywhere.",
+        "name": "enabled",
+        "type": "boolean"
+      },
+      {
+        "initialValue": 100,
+        "description": "Lower numbers appear first. Controls homepage and listing order.",
+        "name": "priority",
+        "type": "number"
+      },
+      {
+        "description": "A single book may appear in multiple collections.",
+        "of": [
+          {
+            "to": [
+              {
+                "type": "book"
+              }
+            ],
+            "type": "reference",
+            "title": "Reference to publications archive"
+          }
+        ],
+        "name": "books",
+        "type": "array",
+        "title": "Books in this Collection"
+      }
+    ],
+    "name": "collection",
+    "type": "document",
+    "title": "Collections (Curated Shelves)"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "level": "error",
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ]
+          }
+        ],
+        "name": "name",
+        "type": "string",
+        "title": "Bundle Name"
+      },
+      {
+        "name": "description",
+        "type": "text"
+      },
+      {
+        "options": {
+          "hotspot": true
+        },
+        "name": "coverImage",
+        "type": "image",
+        "title": "Bundle Cover Image"
+      },
+      {
+        "validation": [
+          {
+            "level": "error",
+            "rules": [
+              {
+                "flag": "min",
+                "constraint": 2
+              }
+            ],
+            "message": "A bundle must contain at least two books."
+          }
+        ],
+        "of": [
+          {
+            "to": [
+              {
+                "type": "book"
+              }
+            ],
+            "type": "reference",
+            "title": "Reference to publications archive"
+          }
+        ],
+        "name": "books",
+        "type": "array",
+        "title": "Books in this Bundle"
+      },
+      {
+        "options": {
+          "list": [
+            {
+              "title": "None (Just a Convenience Bundle)",
+              "value": "none"
+            },
+            {
+              "title": "Percentage Off",
+              "value": "percentage"
+            },
+            {
+              "title": "Fixed Amount Off",
+              "value": "fixed"
+            },
+            {
+              "title": "Set Final Price",
+              "value": "final"
+            }
+          ],
+          "layout": "radio"
+        },
+        "initialValue": "none",
+        "name": "discountType",
+        "type": "string"
+      },
+      {
+        "validation": [
+          {
+            "level": "error",
+            "rules": [
+              {
+                "flag": "min",
+                "constraint": 0
+              }
+            ]
+          }
+        ],
+        "description": "Meaning depends on Discount Type: percent for percentage (0-100), rupees for fixed / final.",
+        "name": "discountValue",
+        "type": "number"
+      },
+      {
+        "initialValue": true,
+        "description": "Inactive bundles are hidden from the storefront.",
+        "name": "active",
+        "type": "boolean"
+      },
+      {
+        "initialValue": 100,
+        "description": "Lower numbers appear first.",
+        "name": "priority",
+        "type": "number"
+      }
+    ],
+    "name": "bundle",
+    "type": "document",
+    "title": "Bundles & Sets"
+  },
+  {
+    "fields": [
+      {
+        "name": "customerName",
+        "type": "string"
+      },
+      {
+        "name": "totalAmount",
+        "type": "number"
+      },
+      {
+        "name": "status",
+        "type": "string"
+      }
+    ],
+    "name": "order",
+    "type": "document",
+    "title": "Incoming Orders"
+  }
+]

@@ -125,7 +125,7 @@ export default function LoginPage() {
 
       <div className="max-w-md w-full bg-white border border-[#1A1A1A]/10 p-8 shadow-sm rounded-sm">
         <h2 className="font-serif text-2xl font-normal text-center mb-1">
-          {isRegistering ? 'Create Scholar Dossier' : 'Sign In to Explore'}
+          {isRegistering ? 'Create Account' : 'Sign In to Explore'}
         </h2>
         <p className="text-[10px] text-[#7D5A34] text-center tracking-widest uppercase font-semibold mb-6">
           Idarah-i Adabiyat-i Dilli
@@ -161,34 +161,30 @@ export default function LoginPage() {
               className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none focus:border-[#7D5A34] rounded-sm" />
           </div>
 
-          {isRegistering && (
-            <div>
-              <label className="block text-[10px] uppercase tracking-widest font-bold text-[#1A1A1A]/60 mb-2">Account Type</label>
-              <div className="space-y-1.5">
-                {ACCOUNT_TYPES.map(t => (
-                  <label key={t.value} className={`flex items-start gap-2 p-2 border rounded-sm cursor-pointer transition-colors ${accountType === t.value ? 'border-[#7D5A34] bg-[#7D5A34]/5' : 'border-[#1A1A1A]/10 hover:bg-[#1A1A1A]/[0.02]'}`}>
-                    <input
-                      type="radio"
-                      name="accountType"
-                      value={t.value}
-                      checked={accountType === t.value}
-                      onChange={() => setAccountType(t.value)}
-                      className="mt-0.5 accent-[#7D5A34] flex-shrink-0"
-                    />
-                    <div>
-                      <span className="text-xs font-bold">{t.label}</span>
-                      <span className="block text-[10px] text-[#1A1A1A]/50 mt-0.5">{t.description}</span>
-                    </div>
-                  </label>
-                ))}
-              </div>
-              {selectedMeta?.requiresVerification && (
-                <p className="text-[10px] text-[#7D5A34] italic mt-2 leading-relaxed">
-                  Non-regular accounts require manual verification. You can browse and shop at regular pricing while your request is reviewed.
-                </p>
-              )}
-            </div>
-          )}
+{isRegistering && (
+  <div>
+    <label className="block text-[10px] uppercase tracking-widest font-bold text-[#1A1A1A]/60 mb-1.5">
+      Account Type
+    </label>
+    <select
+      value={accountType}
+      onChange={e => setAccountType(e.target.value as AccountType)}
+      className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none focus:border-[#7D5A34] rounded-sm text-[#1A1A1A]"
+    >
+      <option value="regular">Reader / Regular Customer</option>
+      <option value="student">Student / Scholar (Verification Required)</option>
+      <option value="author">Author / Academic Contributor</option>
+      <option value="library">Library / Institutional Buyer</option>
+      <option value="distributor">Distributor / Trade Partner</option>
+    </select>
+    
+    {selectedMeta?.requiresVerification && (
+      <p className="text-[10px] text-[#7D5A34] italic mt-2 leading-relaxed">
+        Special accounts require manual verification. You can shop at regular rates while your account is under review.
+      </p>
+    )}
+  </div>
+)}
 
           <button
             type="submit"

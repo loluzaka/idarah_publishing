@@ -20,6 +20,7 @@ export default function HeaderWrapper() {
   const { user, loading: authLoading } = useAuth();
   const [totalItems, setTotalItems] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const syncCartBadge = () => {
@@ -61,6 +62,14 @@ export default function HeaderWrapper() {
     } else {
       router.push('/books?focus=search');
     }
+  };
+
+  // Submit a typed query from the header search bar → catalogue with the query applied.
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setMobileMenuOpen(false);
+    const q = searchQuery.trim();
+    router.push(q ? `/books?q=${encodeURIComponent(q)}` : '/books?focus=search');
   };
 
   const NAV_LINKS = [
@@ -112,12 +121,21 @@ export default function HeaderWrapper() {
               );
             })}
             {!isBooksPage && (
-              <button onClick={handleSearchIconClick} aria-label="Explore our catalogue"
-                className="flex items-center gap-2 border border-[#1A1A1A]/15 bg-[#1A1A1A]/[0.02] hover:bg-white hover:border-[#1A1A1A]/30 hover:shadow-sm transition-all px-3 py-1.5 rounded-sm text-left">
-                <Search className="w-3.5 h-3.5 text-[#1A1A1A]/35 flex-shrink-0" strokeWidth={2} />
-                <span className="font-sans text-xs text-[#1A1A1A]/35 w-32 truncate">Explore our catalogue...</span>
-              </button>
-            )}
+  <form onSubmit={handleSearchSubmit}
+    className="flex items-center gap-2 border-2 border-[#1A1A1A] bg-white hover:bg-[#1A1A1A]/[0.02] transition-all px-3 py-1.5 rounded-sm w-full max-w-[240px] focus-within:max-w-[280px]">
+    <input
+      type="text"
+      value={searchQuery}
+      onChange={e => setSearchQuery(e.target.value)}
+      placeholder="Explore our catalogue..."
+      aria-label="Search publications"
+      className="bg-transparent font-sans text-xs text-[#1A1A1A] w-full outline-none placeholder:text-[#1A1A1A]/50"
+    />
+    <button type="submit" aria-label="Search">
+      <Search className="w-3.5 h-3.5 text-[#1A1A1A] flex-shrink-0" strokeWidth={2.25} />
+    </button>
+  </form>
+)}
           </nav>
 
           {/* Right Action Utilities — circular icon buttons */}

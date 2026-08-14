@@ -38,14 +38,15 @@ export default function ContactPage() {
         {/* Header */}
         <div className="border-l-2 border-[#1A1A1A] pl-6 mb-12">
           <span className="font-sans text-xs font-bold tracking-widest uppercase text-[#7D5A34] block mb-2">
-            Institutional Communications
+            GET IN TOUCH
           </span>
           <h1 className="text-4xl md:text-5xl font-normal leading-tight tracking-tight mb-4">
-            Contact Our Desk
+            Connect With Us
           </h1>
           <p className="font-sans text-sm text-[#1A1A1A]/70 max-w-xl">
-            For book inquiries, catalog requests, academic submissions, or direct order assistance,
-            please feel free to reach out to us through any of the channels below.
+            Reach out to us for book inquiries, orders or any questions
+            <br />
+            Always happy to help!
           </p>
         </div>
 
@@ -96,12 +97,14 @@ export default function ContactPage() {
               <Clock className="w-5 h-5 text-[#7D5A34] shrink-0 mt-1" />
               <div>
                 <h3 className="font-bold uppercase text-[11px] tracking-wider text-[#1A1A1A]/50 mb-1">
-                  Visiting Hours
+                  VISITS & INQUIRIES
                 </h3>
                 <p className="text-sm text-[#1A1A1A]/80 leading-relaxed">
-                  Standard operating hours.<br />
-                  <span className="text-xs text-[#1A1A1A]/60 italic">
-                    (Note: As we operate out of a home office, prior appointment/notice via call or WhatsApp is recommended for visits.)
+                  By Appointment Only<br />
+                  Mon – Sat: 10:00 AM – 6:00 PM <br />
+                  <span className="text-xs text-[#1A1A1A]/60 bold">
+                  
+                    We operate our publishing house from our family home. To ensure someone is available to assist you, please inform us in advance via call or WhatsApp before dropping by
                   </span>
                 </p>
               </div>
@@ -190,7 +193,7 @@ export default function ContactPage() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Dr. A. Khan"
+                    placeholder="e.g. Jawn Don"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                     className="w-full px-3 py-2 bg-[#FBFBFA] border border-[#1A1A1A]/20 rounded focus:outline-none focus:border-[#7D5A34]"

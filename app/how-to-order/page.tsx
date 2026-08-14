@@ -1,38 +1,23 @@
 "use client";
 
 import React from 'react';
-import { ClipboardList, MessageCircle, Percent, Truck, FileCheck, PackageCheck } from 'lucide-react';
+import { ShoppingBag, CreditCard, Truck, MessageCircle } from 'lucide-react';
 
 const STEPS = [
   {
-    Icon: ClipboardList,
-    title: 'Compile Your Selection',
-    body: 'Browse the catalog and add titles to your selection to generate a preliminary balance check.',
+    Icon: ShoppingBag,
+    title: 'Select Your Publications',
+    body: 'Browse our online catalogue and add your desired titles directly to your cart.',
   },
   {
-    Icon: MessageCircle,
-    title: 'Submit Your Request',
-    body: 'Send your tentative list directly to our desk via the integrated WhatsApp link or the checkout form.',
-  },
-  {
-    Icon: Percent,
-    title: 'Editorial Review',
-    body: 'Our administrative office reviews the selection and applies any academic or bulk library discounts.',
+    Icon: CreditCard,
+    title: 'Checkout & Shipping',
+    body: 'Proceed to checkout where shipping fees are automatically calculated based on weight and destination.',
   },
   {
     Icon: Truck,
-    title: 'Freight Calculation',
-    body: 'We calculate exact India Post — Gyan Post shipping based on total packaged weight and issue your invoice.',
-  },
-  {
-    Icon: FileCheck,
-    title: 'Settle Payment',
-    body: 'A verified payment link is issued via email or WhatsApp. Payment is only requested after verification.',
-  },
-  {
-    Icon: PackageCheck,
-    title: 'Dispatch & Delivery',
-    body: 'Your order is packed at Jayyad Press and dispatched with a tracking number for the postal journey.',
+    title: 'Instant Payment & Dispatch',
+    body: 'Complete payment securely via card, UPI, or banking. Once placed, your package is safely packed at our press and dispatched with tracking.',
   },
 ];
 
@@ -50,13 +35,12 @@ export default function HowToOrderPage() {
             Ordering &amp; Shipping Terms
           </h1>
           <p className="font-sans text-sm text-[#1A1A1A]/70 leading-relaxed">
-            Because we cater directly to research scholars, university libraries, and historic archives,
-            our procurement workflow relies on manual verification to ensure precision at every stage.
+            Our streamlined procurement workflow makes acquiring academic literature, institutional volumes, and rare titles simple, secure, and swift.
           </p>
         </div>
 
         {/* Steps grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-14">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-14">
           {STEPS.map(({ Icon, title, body }, i) => (
             <div
               key={title}
@@ -83,7 +67,7 @@ export default function HowToOrderPage() {
               Institutional &amp; Bulk Orders
             </span>
             <h2 className="font-serif text-2xl font-normal leading-snug">
-              Need a custom quote for a library, university, or bulk shipment?
+              Need assistance or custom quotes for library, university, or bulk shipments?
             </h2>
           </div>
           <a
