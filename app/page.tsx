@@ -178,14 +178,14 @@ export default function HomePage() {
     () => getRecommendedCollections(featuredCollections, books, viewedBooks, recentSearches),
     [featuredCollections, books, viewedBooks, recentSearches]
   );
-
-  // ── Hero slides: 3-tier priority system ───────────────────────────────────
-  //   Level 1: personalised slides derived from recommended books' homepageSlides.
-  //   Level 2: featured collections with banners (when history yields no rec slides).
-  //   Level 3: same collection banners for first-time visitors, plus book covers
-  //            as a last-resort fill so new visitors still see a rich homepage.
-  const heroSlides = useMemo<HeroSlide[]>(() => {
-    // Level 1 — personalised from the ranked recommendation set
+// ── Hero slides: Priority System ───────────────────────────────────
+//   1. Personalised / Click-history book promo slides (when user has interaction history).
+//   2. Default book promo slides (all books with homepageSlides uploaded, sorted by priority).
+//   3. Featured collection banners (if no book promo slides exist).
+//   4. Raw book covers fallback.
+const heroSlides = useMemo<HeroSlide[]>(() => {
+  // Level 1: Personalised slides if the user has click/view history
+  if (hasHistory && rankedRecommendations.length > 0) {
     const personalised: HeroSlide[] = [];
     for (const book of rankedRecommendations) {
       for (const slide of book.homepageSlides ?? []) {
@@ -201,36 +201,53 @@ export default function HomePage() {
       }
     }
     personalised.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+    if (personalised.length > 0) return personalised;
+  }
 
-    if (personalised.length > 0 && hasHistory) return personalised;
+  // Level 2: Default promotional book slides from ALL books
+  const defaultBookSlides: HeroSlide[] = [];
+  for (const book of books) {
+    for (const slide of book.homepageSlides ?? []) {
+      if (slide?.image) {
+        defaultBookSlides.push({
+          key: `book-${book._id}-${slide._key ?? defaultBookSlides.length}`,
+          image: slide.image,
+          bookId: book._id,
+          alt: slide.heading || book.title || 'Featured publication',
+          priority: slide.priority,
+        });
+      }
+    }
+  }
+  defaultBookSlides.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+  if (defaultBookSlides.length > 0) return defaultBookSlides;
 
-    // Level 2 / 3 — featured collection banners
-    const collectionSlides: HeroSlide[] = (featuredCollections ?? [])
-      .filter(col => col?.bannerImage)
-      .map(col => ({
-        key: `col-${col._id}`,
-        image: col.bannerImage,
-        href: `/collections/${col.slug?.current ?? ''}`,
-        alt: col.title || 'Featured collection',
-        priority: col.priority,
-      }));
-    collectionSlides.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+  // Level 3: Featured collection banners
+  const collectionSlides: HeroSlide[] = (featuredCollections ?? [])
+    .filter(col => col?.bannerImage)
+    .map(col => ({
+      key: `col-${col._id}`,
+      image: col.bannerImage,
+      href: `/collections/${col.slug?.current ?? ''}`,
+      alt: col.title || 'Featured collection',
+      priority: col.priority,
+    }));
+  collectionSlides.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+  if (collectionSlides.length > 0) return collectionSlides;
 
-    if (collectionSlides.length > 0) return collectionSlides;
+  // Level 4: Fallback to regular book covers
+  return books
+    .slice(0, 4)
+    .filter(b => b.coverImage)
+    .map(b => ({
+      key: `cover-${b._id}`,
+      image: b.coverImage,
+      bookId: b._id,
+      alt: b.title,
+    }));
+}, [rankedRecommendations, featuredCollections, books, hasHistory]);
 
-    // Level 3 fallback — book covers when no banners exist yet
-    return books.slice(0, 4)
-      .filter(b => b.coverImage)
-      .map(b => ({
-        key: `cover-${b._id}`,
-        image: b.coverImage,
-        bookId: b._id,
-        alt: b.title,
-      }));
-  }, [rankedRecommendations, featuredCollections, books, hasHistory]);
-
-  const hasHeroSlides = heroSlides.length > 0;
-
+const hasHeroSlides = heroSlides.length > 0;
   const addToCart = (book: Book) => {
     let updatedCart: CartItem[];
     const priced = customerPrice(book.price, book.originalPrice, discountRate);
