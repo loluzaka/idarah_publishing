@@ -19,6 +19,12 @@ const authorType = {
       validation: (Rule: any) => Rule.required().error('An author name is required.'),
     },
     {
+      name: 'shortName',
+      title: 'Short Name (for small cards)',
+      type: 'string',
+      description: 'Optional. Short form shown on small book cards, e.g. "Prof. Ansari" or "Qureshi". The full name is always shown on the book overlay and detail page. If left empty, the card automatically shows the first and last word of the full name.',
+    },
+    {
       name: 'slug',
       title: 'Slug',
       type: 'slug',

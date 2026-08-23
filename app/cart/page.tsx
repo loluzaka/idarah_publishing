@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CartItem, readCart, writeCart, clearCart as clearCartStorage } from '@/app/lib/cart';
-import { formatAuthors } from '@/app/lib/authors';
+import { stackedAuthors } from '@/app/lib/authors';
 import { ClipboardList, ArrowRight, ArrowLeft, Trash2 } from 'lucide-react';
 
 export default function CartViewPage() {
@@ -106,7 +106,7 @@ export default function CartViewPage() {
                     <div className="md:col-span-6">
                       <p className="font-serif text-lg text-[#1A1A1A] leading-snug">{item.title}</p>
                       {item.authors.length > 0 && (
-                        <p className="text-[11px] text-[#1A1A1A]/60 italic mt-1">{formatAuthors(item.authors)}</p>
+                        <p className="text-[11px] text-[#1A1A1A]/60 italic mt-1 whitespace-pre-line">{stackedAuthors(item.authors)}</p>
                       )}
                       
                       <button

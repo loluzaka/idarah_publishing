@@ -41,13 +41,46 @@ export function normalizeAuthors(authors: unknown, legacyAuthor?: unknown): stri
   return names;
 }
 
-/** Render one, two, or many contributor names in a consistent editorial style. */
+/** Inline, comma-separated contributor list (admin orders, invoice, tooltips). */
 export function formatAuthors(authors: unknown, fallback = 'Unknown Author'): string {
   const names = normalizeAuthors(authors);
-  if (names.length === 0) return fallback;
-  if (names.length === 1) return names[0];
-  if (names.length === 2) return `${names[0]} & ${names[1]}`;
-  return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
+  return names.length ? names.join(', ') : fallback;
+}
+
+/** Contributor names stacked one per line — pair with `whitespace-pre-line` on the element. */
+export function stackedAuthors(authors: unknown, fallback = ''): string {
+  const names = normalizeAuthors(authors);
+  return names.length ? names.join('\n') : fallback;
+}
+
+function heuristicShortName(full: string): string {
+  const words = full.split(/\s+/).filter(Boolean);
+  if (words.length <= 2) return full;
+  return `${words[0]} ${words[words.length - 1]}`;
+}
+
+/**
+ * Short, stacked byline for small cards. Prefers the editor-set `shortName`
+ * (aligned by author order) and falls back to `Firstname Surname` so cards
+ * still look tidy before any short names are filled in.
+ */
+export function stackedShortAuthors(fullNames: unknown, shortNames?: unknown, fallback = ''): string {
+  const full = normalizeAuthors(fullNames);
+  if (!full.length) return fallback;
+  const shorts = (Array.isArray(shortNames) ? shortNames : [])
+    .map(value => (typeof value === 'string' ? value.trim() : null));
+
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  full.forEach((name, index) => {
+    const short = (shorts[index] || heuristicShortName(name)).trim();
+    if (!short) return;
+    const key = short.toLocaleLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    lines.push(short);
+  });
+  return lines.length ? lines.join('\n') : fallback;
 }
 
 /** True when two books share at least one contributor, ignoring name case. */

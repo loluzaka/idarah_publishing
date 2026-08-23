@@ -6,7 +6,7 @@ import { useAuth } from '@/app/context/AuthContext';
 import { client, urlFor } from '@/app/sanityClient';
 import { getWishlist, removeFromWishlist } from '@/app/lib/wishlist';
 import { getRecentlyViewedBooks } from '@/app/lib/recommendations';
-import { formatAuthors } from '@/app/lib/authors';
+import { formatAuthors, stackedShortAuthors } from '@/app/lib/authors';
 import { getAddresses, saveAddress, deleteAddress, Address } from '@/app/lib/addresses';
 import { getUserOrders, STATUS_LABELS, Order } from '@/app/lib/orders';
 import { isAdmin } from '@/app/lib/admin';
@@ -36,7 +36,7 @@ const TABS: { id: TabId; label: string; Icon: any }[] = [
   { id: 'account',   label: 'Account',          Icon: Settings },
 ];
 
-interface BookLite { _id: string; title: string; authors?: string[]; price: number; coverImage?: any; }
+interface BookLite { _id: string; title: string; authors?: string[]; authorShorts?: (string | null)[]; price: number; coverImage?: any; }
 
 export default function ProfilePage() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -91,7 +91,7 @@ export default function ProfilePage() {
           const ids = entries.map(e => e.bookId);
           const books: BookLite[] = await client.fetch(
             `*[_type == "book" && _id in $ids]{
-              _id, title, "authors": authors[]->name, price, coverImage
+              _id, title, "authors": authors[]->name, "authorShorts": authors[]->shortName, price, coverImage
             }`,
             { ids }
           );
@@ -113,7 +113,7 @@ export default function ProfilePage() {
       const ids = recent.map(r => r._id);
       try {
         const books: BookLite[] = await client.fetch(
-          `*[_type == "book" && _id in $ids]{ _id, title, "authors": authors[]->name, price, coverImage }`,
+          `*[_type == "book" && _id in $ids]{ _id, title, "authors": authors[]->name, "authorShorts": authors[]->shortName, price, coverImage }`,
           { ids }
         );
         // Preserve order from recent (most recent first)
@@ -287,7 +287,7 @@ export default function ProfilePage() {
                           {book.coverImage ? <img src={urlFor(book.coverImage).width(200).url()} alt={book.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl opacity-20 font-bold">IAD</div>}
                         </div>
                         <p className="font-serif text-xs font-bold line-clamp-2">{book.title}</p>
-                        <p className="text-[10px] text-[#1A1A1A]/50 mt-0.5">{formatAuthors(book.authors)}</p>
+                        <p className="text-[10px] text-[#1A1A1A]/50 mt-0.5 whitespace-pre-line">{stackedShortAuthors(book.authors, book.authorShorts)}</p>
                         <p className="text-xs font-bold mt-1">₹{book.price}</p>
                       </div>
                     ))}
@@ -312,7 +312,7 @@ export default function ProfilePage() {
                           {book.coverImage ? <img src={urlFor(book.coverImage).width(200).url()} alt={book.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl opacity-20 font-bold">IAD</div>}
                         </div>
                         <p className="font-serif text-xs font-bold line-clamp-2">{book.title}</p>
-                        <p className="text-[10px] text-[#1A1A1A]/50 mt-0.5">{formatAuthors(book.authors)}</p>
+                        <p className="text-[10px] text-[#1A1A1A]/50 mt-0.5 whitespace-pre-line">{stackedShortAuthors(book.authors, book.authorShorts)}</p>
                         <p className="text-xs font-bold mt-1">₹{book.price}</p>
                       </div>
                     ))}

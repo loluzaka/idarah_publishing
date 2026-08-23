@@ -6,7 +6,7 @@ import { client, urlFor } from '@/app/sanityClient';
 
 const BookModal = dynamic(() => import('@/app/components/BookModal'), { ssr: false });
 import { CartItem, readCart, writeCart } from '@/app/lib/cart';
-import { formatAuthors } from '@/app/lib/authors';
+import { stackedShortAuthors } from '@/app/lib/authors';
 import { isPurchasable } from '@/app/lib/stock';
 import { Layers } from 'lucide-react';
 import { useUserProfile } from '@/app/hooks/useUserProfile';
@@ -16,6 +16,7 @@ interface CollectionBook {
   _id: string;
   title: string;
   authors?: string[] | null;
+  authorShorts?: (string | null)[];
   isbn?: string;
   series?: string;
   language?: string;
@@ -67,6 +68,7 @@ export default function CollectionClient({ slug }: { slug: string }) {
             "books": books[]->{
               _id, title,
               "authors": authors[]->name,
+              "authorShorts": authors[]->shortName,
               isbn, series, language,
               price, originalPrice, stock, coverImage, coverPlaceholder
             }
@@ -185,7 +187,7 @@ export default function CollectionClient({ slug }: { slug: string }) {
                         )}
                       </div>
                       <h4 className="text-base font-bold leading-snug group-hover:text-[#7D5A34] transition-colors">{book.title}</h4>
-                      <p className="font-sans text-[11px] text-[#1A1A1A]/55 mt-1 line-clamp-2">{formatAuthors(book.authors)}</p>
+                      <p className="font-sans text-[11px] text-[#1A1A1A]/55 mt-1 whitespace-pre-line leading-snug line-clamp-2">{stackedShortAuthors(book.authors, book.authorShorts, 'Unknown Author')}</p>
                       {book.isbn && <p className="font-mono text-[8px] text-[#1A1A1A]/40 mt-1.5 uppercase">ISBN: {book.isbn}</p>}
                       {book.language && <p className="font-sans text-[8px] text-[#1A1A1A]/40 mt-0.5 uppercase tracking-wider">{book.language}</p>}
                     </button>

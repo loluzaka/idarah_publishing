@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { client, urlFor } from '../../sanityClient';
-import { formatAuthors } from '../../lib/authors';
+import { stackedAuthors } from '../../lib/authors';
 import { readCart, writeCart } from '../../lib/cart';
 
 interface Book {
@@ -130,8 +130,8 @@ export default function BookDetailPage() {
               <h1 className="text-2xl md:text-4xl font-bold tracking-tight leading-tight mb-2">
                 {book.title}
               </h1>
-              <p className="font-sans text-xs md:text-sm text-[#1A1A1A]/60 mt-1">
-                {formatAuthors(book.authors)}
+              <p className="font-sans text-xs md:text-sm text-[#1A1A1A]/60 mt-1 whitespace-pre-line leading-relaxed">
+                {stackedAuthors(book.authors)}
               </p>
             </div>
 

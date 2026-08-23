@@ -10,7 +10,7 @@ import { stockLabel, isPurchasable, getStockStatus } from '@/app/lib/stock';
 import { bookJsonLd, jsonLdString } from '@/app/lib/seo';
 import { useUserProfile } from '@/app/hooks/useUserProfile';
 import { customerPrice } from '@/app/lib/pricing';
-import { formatAuthors } from '@/app/lib/authors';
+import { stackedAuthors, stackedShortAuthors } from '@/app/lib/authors';
 
 interface Category {
   title: string;
@@ -43,6 +43,7 @@ interface RelatedBook {
   _id: string;
   title: string;
   authors: string[];
+  authorShorts?: (string | null)[];
   price: number;
   coverImage?: any;
 }
@@ -203,6 +204,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
           )][0...4]{
             _id, title,
             "authors": authors[]->name,
+            "authorShorts": authors[]->shortName,
             price,
             coverImage
           }`;
@@ -450,7 +452,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                 )}
                 <h3 className="text-2xl font-normal leading-snug tracking-tight font-serif text-[#1A1A1A]">{book.title}</h3>
                 <p className="font-sans text-xs text-[#1A1A1A]/70 mt-1">
-                  <span className="text-[#1A1A1A]/70">{formatAuthors(book.authors)}</span>
+                  <span className="text-[#1A1A1A]/70 whitespace-pre-line">{stackedAuthors(book.authors)}</span>
                 </p>
 
                 {/* Average rating display */}
@@ -630,7 +632,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                           )}
                         </div>
                         <p className="font-serif text-[11px] font-bold leading-snug line-clamp-2 text-[#1A1A1A] group-hover:text-[#7D5A34] transition-colors">{rb.title}</p>
-                        <p className="font-sans text-[9px] text-[#1A1A1A]/50 mt-0.5 truncate">{formatAuthors(rb.authors, '')}</p>
+                        <p className="font-sans text-[9px] text-[#1A1A1A]/50 mt-0.5 line-clamp-2 whitespace-pre-line leading-tight">{stackedShortAuthors(rb.authors, rb.authorShorts, '')}</p>
                         <p className="font-sans text-[11px] font-bold mt-1">₹{rb.price}</p>
                       </button>
                     );
