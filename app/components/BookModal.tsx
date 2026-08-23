@@ -450,7 +450,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                 )}
                 <h3 className="text-2xl font-normal leading-snug tracking-tight font-serif text-[#1A1A1A]">{book.title}</h3>
                 <p className="font-sans text-xs text-[#1A1A1A]/70 mt-1">
-                  By <span className="font-semibold text-[#1A1A1A]">{formatAuthors(book.authors)}</span>
+                  <span className="text-[#1A1A1A]/70">{formatAuthors(book.authors)}</span>
                 </p>
 
                 {/* Average rating display */}

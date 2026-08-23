@@ -305,7 +305,7 @@ export default function BooksPage() {
             )}
           </div>
           <h4 className="text-base font-bold leading-snug group-hover:text-[#7D5A34] transition-colors">{book.title}</h4>
-          <p className="font-sans text-xs text-[#1A1A1A]/70 mt-1">By {formatAuthors(book.authors)}</p>
+          <p className="font-sans text-[11px] text-[#1A1A1A]/55 mt-1 line-clamp-2">{formatAuthors(book.authors)}</p>
           {book.isbn && <p className="font-mono text-[8px] text-[#1A1A1A]/40 mt-1.5 uppercase">ISBN: {book.isbn}</p>}
           {book.language && <p className="font-sans text-[8px] text-[#1A1A1A]/40 mt-0.5 uppercase tracking-wider">{book.language}</p>}
         </button>
@@ -798,7 +798,7 @@ Discover works in our {activeTheme.category.title} collection. Click on any cove
                   <div key={`max-${item.id}`} className="grid grid-cols-1 sm:grid-cols-5 items-center gap-3 sm:gap-0 py-3 border-b border-[#1A1A1A]/5 font-sans text-xs">
                     <div className="col-span-3">
                       <p className="font-serif font-bold text-sm text-[#1A1A1A]">{item.title}</p>
-                      <p className="text-[10px] text-[#1A1A1A]/60 italic mt-0.5">By {formatAuthors(item.authors)}</p>
+                      <p className="text-[10px] text-[#1A1A1A]/60 italic mt-0.5">{formatAuthors(item.authors)}</p>
                     </div>
                     <div className="flex items-center justify-center gap-3">
                       <button onClick={() => decreaseQuantity(item.id)} className="w-6 h-6 rounded-full border border-[#1A1A1A]/20 flex items-center justify-center hover:bg-[#1A1A1A] hover:text-[#FBFBFA] transition-all font-bold select-none">—</button>

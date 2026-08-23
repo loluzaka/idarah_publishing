@@ -130,8 +130,8 @@ export default function BookDetailPage() {
               <h1 className="text-2xl md:text-4xl font-bold tracking-tight leading-tight mb-2">
                 {book.title}
               </h1>
-              <p className="font-sans text-sm md:text-base text-[#7D5A34] font-medium">
-                By {formatAuthors(book.authors)}
+              <p className="font-sans text-xs md:text-sm text-[#1A1A1A]/60 mt-1">
+                {formatAuthors(book.authors)}
               </p>
             </div>
 

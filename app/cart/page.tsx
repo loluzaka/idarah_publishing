@@ -106,7 +106,7 @@ export default function CartViewPage() {
                     <div className="md:col-span-6">
                       <p className="font-serif text-lg text-[#1A1A1A] leading-snug">{item.title}</p>
                       {item.authors.length > 0 && (
-                        <p className="text-[11px] text-[#1A1A1A]/60 italic mt-1">By {formatAuthors(item.authors)}</p>
+                        <p className="text-[11px] text-[#1A1A1A]/60 italic mt-1">{formatAuthors(item.authors)}</p>
                       )}
                       
                       <button

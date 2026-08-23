@@ -336,7 +336,7 @@ const hasHeroSlides = heroSlides.length > 0;
             </div>
           </div>
           <h4 className="text-base font-bold leading-snug group-hover:text-[#7D5A34] transition-colors">{book.title}</h4>
-          <p className="font-sans text-xs text-[#1A1A1A]/70 mt-1">By {formatAuthors(book.authors)}</p>
+          <p className="font-sans text-[11px] text-[#1A1A1A]/55 mt-1 line-clamp-2">{formatAuthors(book.authors)}</p>
         </button>
 
         <div className="border-t border-[#1A1A1A]/10 pt-3 mt-4 flex items-center justify-between">
@@ -698,7 +698,7 @@ const hasHeroSlides = heroSlides.length > 0;
                   <div key={`max-home-${item.id}`} className="grid grid-cols-1 sm:grid-cols-5 items-center gap-3 sm:gap-0 py-3 border-b border-[#1A1A1A]/5 font-sans text-xs">
                     <div className="col-span-3">
                       <p className="font-serif font-bold text-sm text-[#1A1A1A]">{item.title}</p>
-                      <p className="text-[10px] text-[#1A1A1A]/60 italic mt-0.5">By {formatAuthors(item.authors)}</p>
+                      <p className="text-[10px] text-[#1A1A1A]/60 italic mt-0.5">{formatAuthors(item.authors)}</p>
                     </div>
 
                     <div className="flex items-center justify-center gap-3">

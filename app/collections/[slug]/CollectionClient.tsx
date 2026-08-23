@@ -185,7 +185,7 @@ export default function CollectionClient({ slug }: { slug: string }) {
                         )}
                       </div>
                       <h4 className="text-base font-bold leading-snug group-hover:text-[#7D5A34] transition-colors">{book.title}</h4>
-                      <p className="font-sans text-xs text-[#1A1A1A]/70 mt-1">By {formatAuthors(book.authors)}</p>
+                      <p className="font-sans text-[11px] text-[#1A1A1A]/55 mt-1 line-clamp-2">{formatAuthors(book.authors)}</p>
                       {book.isbn && <p className="font-mono text-[8px] text-[#1A1A1A]/40 mt-1.5 uppercase">ISBN: {book.isbn}</p>}
                       {book.language && <p className="font-sans text-[8px] text-[#1A1A1A]/40 mt-0.5 uppercase tracking-wider">{book.language}</p>}
                     </button>

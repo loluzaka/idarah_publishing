@@ -178,7 +178,7 @@ const shipping = useMemo(() => calculateShipping(
     <tbody>
       ${cart.map(item => `
         <tr>
-          <td><strong>${item.title}</strong>${item.authors.length ? `<br/><small style="color:#666">By ${formatAuthors(item.authors)}</small>` : ''}</td>
+          <td><strong>${item.title}</strong>${item.authors.length ? `<br/><small style="color:#666">${formatAuthors(item.authors)}</small>` : ''}</td>
           <td class="text-right">₹${item.price}</td>
           <td class="text-right">${item.quantity}</td>
           <td class="text-right">₹${item.price * item.quantity}</td>
