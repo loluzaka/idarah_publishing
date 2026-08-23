@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Package, MessageCircle } from 'lucide-react';
 import { getAllOrders, updateOrder, Order, OrderStatus, STATUS_LABELS, ORDER_STATUSES } from '@/app/lib/orders';
+import { formatAuthors } from '@/app/lib/authors';
 
 const PIPELINE_ORDER: OrderStatus[] = [
   'pending_payment',
@@ -174,7 +175,7 @@ export default function AdminOrdersPage() {
                         <ul className="space-y-1">
                           {o.items.map((i, idx) => (
                             <li key={idx} className="flex justify-between">
-                              <span className="truncate">{i.title} × {i.quantity}</span>
+                              <span className="truncate">{i.title}{i.authors?.length ? ` — ${formatAuthors(i.authors)}` : ''} × {i.quantity}</span>
                               <span className="flex-shrink-0 ml-2">₹{i.price * i.quantity}</span>
                             </li>
                           ))}

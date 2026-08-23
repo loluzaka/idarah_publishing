@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { client, urlFor } from '../../sanityClient';
+import { formatAuthors } from '../../lib/authors';
+import { readCart, writeCart } from '../../lib/cart';
 
 interface Book {
   _id: string;
   title: string;
-  author: string;
+  authors?: string[] | null;
   series?: string;
   price: number;
   description?: string;
@@ -34,7 +36,7 @@ export default function BookDetailPage() {
         const data = await client.fetch(
           `*[_type == "book" && _id == $id][0]{
             ...,
-            "author": author->name,
+            "authors": authors[]->name,
             "category": category->{title}
           }`,
           { id }
@@ -53,22 +55,13 @@ export default function BookDetailPage() {
   const handleAddToCart = () => {
     if (!book) return;
 
-    const localCart = localStorage.getItem('iad_cart');
-    let currentCart = localCart ? JSON.parse(localCart) : [];
-    
-    const existingItem = currentCart.find((item: any) => item.id === book._id);
-    if (existingItem) {
-      currentCart = currentCart.map((item: any) =>
-        item.id === book._id ? { ...item, quantity: item.quantity + 1 } : item
-      );
-    } else {
-      currentCart.push({ id: book._id, quantity: 1 });
-    }
+    const currentCart = readCart();
+    const existingItem = currentCart.find(item => item.id === book._id);
+    const updatedCart = existingItem
+      ? currentCart.map(item => item.id === book._id ? { ...item, quantity: item.quantity + 1 } : item)
+      : [...currentCart, { id: book._id, title: book.title, authors: book.authors ?? [], price: book.price, quantity: 1 }];
 
-    localStorage.setItem('iad_cart', JSON.stringify(currentCart));
-    
-    // Dispatch a storage event to alert our global Top Bar badge counter instantly
-    window.dispatchEvent(new Event('storage'));
+    writeCart(updatedCart);
     
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
@@ -138,7 +131,7 @@ export default function BookDetailPage() {
                 {book.title}
               </h1>
               <p className="font-sans text-sm md:text-base text-[#7D5A34] font-medium">
-                By {book.author}
+                By {formatAuthors(book.authors)}
               </p>
             </div>
 

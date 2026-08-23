@@ -6,6 +6,7 @@ import { client, urlFor } from '@/app/sanityClient';
 
 const BookModal = dynamic(() => import('@/app/components/BookModal'), { ssr: false });
 import { CartItem, readCart, writeCart } from '@/app/lib/cart';
+import { formatAuthors } from '@/app/lib/authors';
 import { isPurchasable } from '@/app/lib/stock';
 import { Layers } from 'lucide-react';
 import { useUserProfile } from '@/app/hooks/useUserProfile';
@@ -14,7 +15,7 @@ import { customerPrice } from '@/app/lib/pricing';
 interface CollectionBook {
   _id: string;
   title: string;
-  author?: string | null;
+  authors?: string[] | null;
   isbn?: string;
   series?: string;
   language?: string;
@@ -65,7 +66,7 @@ export default function CollectionClient({ slug }: { slug: string }) {
             _id, title, slug, description, bannerImage, displayStyle,
             "books": books[]->{
               _id, title,
-              "author": author->name,
+              "authors": authors[]->name,
               isbn, series, language,
               price, originalPrice, stock, coverImage, coverPlaceholder
             }
@@ -88,7 +89,7 @@ export default function CollectionClient({ slug }: { slug: string }) {
       const ex = prev.find(i => i.id === book._id);
       const updated = ex
         ? prev.map(i => i.id === book._id ? { ...i, quantity: i.quantity + 1 } : i)
-        : [...prev, { id: book._id, title: book.title, author: book.author ?? '', price: priced.finalPrice, quantity: 1 }];
+        : [...prev, { id: book._id, title: book.title, authors: book.authors ?? [], price: priced.finalPrice, quantity: 1 }];
       writeCart(updated);
       return updated;
     });
@@ -184,7 +185,7 @@ export default function CollectionClient({ slug }: { slug: string }) {
                         )}
                       </div>
                       <h4 className="text-base font-bold leading-snug group-hover:text-[#7D5A34] transition-colors">{book.title}</h4>
-                      <p className="font-sans text-xs text-[#1A1A1A]/70 mt-1">By {book.author ?? 'Unknown'}</p>
+                      <p className="font-sans text-xs text-[#1A1A1A]/70 mt-1">By {formatAuthors(book.authors)}</p>
                       {book.isbn && <p className="font-mono text-[8px] text-[#1A1A1A]/40 mt-1.5 uppercase">ISBN: {book.isbn}</p>}
                       {book.language && <p className="font-sans text-[8px] text-[#1A1A1A]/40 mt-0.5 uppercase tracking-wider">{book.language}</p>}
                     </button>

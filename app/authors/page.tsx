@@ -45,7 +45,7 @@ export default function AuthorsPage() {
           qualifications,
           biography,
           topics,
-          "books": *[_type == "book" && author._ref == ^._id] {
+          "books": *[_type == "book" && references(^._id)] {
             _id,
             title
           }

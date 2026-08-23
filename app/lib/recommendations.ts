@@ -1,11 +1,15 @@
 // Shared utility for search history, recently viewed books, and recommendation scoring.
-// All state is localStorage-only — no Sanity schema changes required.
+// All state is localStorage-only — existing singular-author entries are read safely.
+
+import { normalizeAuthors, sharesAuthor } from './authors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface RecentlyViewedBook {
   _id: string;
   title: string;
+  authors?: string[] | null;
+  /** Compatibility with localStorage entries created before multi-author support. */
   author?: string | null;
   series?: string | null;
   publisher?: string | null;
@@ -13,11 +17,13 @@ export interface RecentlyViewedBook {
   viewedAt?: number;
 }
 
-// Minimal book shape needed for scoring. Author may arrive as a string (dereferenced name),
-// an object with a `.name`, or null when the reference is missing.
+// Minimal book shape needed for scoring. Authors may arrive as dereferenced
+// strings, populated references, or as a legacy singular author field.
 export interface ScoredBook {
   _id: string;
   title?: string | null;
+  authors?: Array<string | { name?: string | null } | null> | null;
+  /** Compatibility with older callers and cached data. */
   author?: string | { name?: string | null } | null;
   series?: string | null;
   publisher?: string | null;
@@ -29,7 +35,6 @@ export interface ScoredBook {
   coverPlaceholder?: string | null;
   [key: string]: any;
 }
-
 
 // ─── localStorage keys ────────────────────────────────────────────────────────
 
@@ -53,12 +58,8 @@ function safeLower(value: unknown): string {
   return safeString(value).toLowerCase();
 }
 
-// Extract an author name whether it's a string, populated ref, or missing.
-function authorName(author: ScoredBook['author'] | RecentlyViewedBook['author']): string {
-  if (!author) return '';
-  if (typeof author === 'string') return author;
-  if (typeof author === 'object' && 'name' in author) return safeString(author.name);
-  return '';
+function authorNames(book: Pick<ScoredBook | RecentlyViewedBook, 'authors' | 'author'>): string[] {
+  return normalizeAuthors(book.authors, book.author);
 }
 
 // ─── Recent Searches ──────────────────────────────────────────────────────────
@@ -103,7 +104,7 @@ export function addRecentlyViewedBook(book: RecentlyViewedBook): void {
   const stamped: RecentlyViewedBook = {
     _id: book._id,
     title: safeString(book.title),
-    author: authorName(book.author) || undefined,
+    authors: authorNames(book),
     series: book.series ?? undefined,
     publisher: book.publisher ?? undefined,
     categories: book.categories ?? undefined,
@@ -165,15 +166,14 @@ export function scoreBook(
   const candidateCats = getCategoryIds(candidate);
   const candidateTitleTokens = tokenize(candidate.title);
   const candidateDescTokens = tokenize(candidate.description);
-  const candidateAuthor = authorName(candidate.author);
+  const candidateAuthors = authorNames(candidate);
 
   for (const viewed of viewedBooks) {
     if (!viewed) continue;
     const weight = decayWeight(viewed.viewedAt, now);
-    const viewedAuthorName = authorName(viewed.author);
 
-    // Same author (name-based comparison, case-sensitive matches Sanity's dereferenced string)
-    if (viewedAuthorName && candidateAuthor && viewedAuthorName === candidateAuthor) {
+    // A match on any shared contributor is a same-author recommendation.
+    if (sharesAuthor(candidateAuthors, authorNames(viewed))) {
       score += 4 * weight;
     }
     // Same series
@@ -202,7 +202,7 @@ export function scoreBook(
     if (!termLower) continue;
     if (safeLower(candidate.title).includes(termLower)) score += 2;
     if (safeLower(candidate.description).includes(termLower)) score += 1;
-    if (candidateAuthor && candidateAuthor.toLowerCase().includes(termLower)) score += 1;
+    if (candidateAuthors.some(author => author.toLowerCase().includes(termLower))) score += 1;
     // Description keyword tokens
     if (candidateDescTokens.has(termLower)) score += 1;
   }

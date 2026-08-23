@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { CartItem, readCart, clearCart, cartSubtotal } from '@/app/lib/cart';
+import { formatAuthors } from '@/app/lib/authors';
 import { client } from '@/app/sanityClient';
 import { calculateShipping, PACKAGING_WEIGHT_GRAMS } from '@/app/lib/shipping';
 import { useUserProfile } from '@/app/hooks/useUserProfile';
@@ -177,7 +178,7 @@ const shipping = useMemo(() => calculateShipping(
     <tbody>
       ${cart.map(item => `
         <tr>
-          <td><strong>${item.title}</strong>${item.author ? `<br/><small style="color:#666">By ${item.author}</small>` : ''}</td>
+          <td><strong>${item.title}</strong>${item.authors.length ? `<br/><small style="color:#666">By ${formatAuthors(item.authors)}</small>` : ''}</td>
           <td class="text-right">₹${item.price}</td>
           <td class="text-right">${item.quantity}</td>
           <td class="text-right">₹${item.price * item.quantity}</td>

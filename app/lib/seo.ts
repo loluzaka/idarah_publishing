@@ -77,7 +77,7 @@ export function organizationJsonLd() {
 interface BookLD {
   _id: string;
   title: string;
-  author?: string | null;
+  authors?: string[] | null;
   isbn?: string | null;
   description?: string | null;
   publisher?: string | null;
@@ -95,13 +95,14 @@ export function bookJsonLd(book: BookLD) {
     book.stock == null ? 'InStock' :
     book.stock <= 0 ? 'OutOfStock' :
     book.stock <= 5 ? 'LimitedAvailability' : 'InStock';
+  const authors = (book.authors ?? []).map(name => name.trim()).filter(Boolean);
 
   return {
     '@context': 'https://schema.org',
     '@type': 'Book',
     '@id': book.url ?? `${SITE.url}/books#${book._id}`,
     name: book.title,
-    ...(book.author ? { author: { '@type': 'Person', name: book.author } } : {}),
+    ...(authors.length ? { author: authors.map(name => ({ '@type': 'Person', name })) } : {}),
     ...(book.isbn ? { isbn: book.isbn } : {}),
     ...(book.description ? { description: book.description.slice(0, 500) } : {}),
     ...(book.publisher ? { publisher: { '@type': 'Organization', name: book.publisher } } : { publisher: { '@type': 'Organization', name: SITE.publisher } }),

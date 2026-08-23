@@ -50,18 +50,6 @@ const authorType = {
         layout: 'tags',
       },
     },
-    {
-      name: 'books',
-      title: 'Linked Publications Reference Archive',
-      type: 'array',
-      description: 'Select the books this author has written.',
-      of: [
-        {
-          type: 'reference',
-          to: [{ type: 'book' }],
-        },
-      ],
-    },
   ],
   preview: {
     select: {
@@ -86,12 +74,12 @@ const bookType = {
       type: 'string',
     },
     {
-      name: 'author',
-      title: 'Author / Translator',
-      type: 'reference',
-      to: [{ type: 'author' }],
-      validation: (Rule: any) => Rule.required(),
-      description: 'Link this book to an official Author Profile document card.',
+      name: 'authors',
+      title: 'Authors / Contributors',
+      type: 'array',
+      of: [{ type: 'reference', to: [{ type: 'author' }] }],
+      validation: (Rule: any) => Rule.required().min(1).error('Add at least one author or contributor.'),
+      description: 'Add every author, editor, translator, or contributor in the order they should be credited.',
     },
     {
       name: 'price',

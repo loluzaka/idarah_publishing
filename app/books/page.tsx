@@ -8,7 +8,8 @@ import { client, urlFor } from '../sanityClient';
 
 const BookModal = dynamic(() => import('../components/BookModal'), { ssr: false });
 import { addRecentSearch, getRecentSearches, clearRecentSearches } from '../lib/recommendations';
-import { CartItem, writeCart, clearCart as clearCartStorage } from '../lib/cart';
+import { CartItem, readCart, writeCart, clearCart as clearCartStorage } from '../lib/cart';
+import { formatAuthors } from '../lib/authors';
 import { buildFuseIndex, fuseSearch, SearchableBook } from '../lib/search';
 import { Library, Search, ClipboardList, MessageCircle, Truck, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUserProfile } from '../hooks/useUserProfile';
@@ -25,7 +26,7 @@ interface Category {
 interface Book {
   _id: string;
   title: string;
-  author?: string | null;
+  authors?: string[] | null;
   isbn?: string;
   series?: string;
   publisher?: string;
@@ -107,7 +108,7 @@ export default function BooksPage() {
   useEffect(() => {
     const localCart = localStorage.getItem('iad_cart');
     if (localCart) {
-      try { setCart(JSON.parse(localCart)); setIsCartOpen(true); } catch {}
+      try { setCart(readCart()); setIsCartOpen(true); } catch {}
     }
     setRecentSearches(getRecentSearches());
 
@@ -127,7 +128,7 @@ export default function BooksPage() {
             language,
             coverPlaceholder,
             coverImage,
-            "author": author->name,
+            "authors": authors[]->name,
             "categories": categories[]->{_id, title, "slug": slug.current}
           }`),
           client.fetch(`*[_type == "collection" && enabled == true]{
@@ -228,7 +229,7 @@ export default function BooksPage() {
       const ex = prev.find(i => i.id === book._id);
       updated = ex
         ? prev.map(i => i.id === book._id ? { ...i, quantity: i.quantity + 1 } : i)
-        : [...prev, { id: book._id, title: book.title, author: book.author ?? '', price: priced.finalPrice, quantity: 1 }];
+        : [...prev, { id: book._id, title: book.title, authors: book.authors ?? [], price: priced.finalPrice, quantity: 1 }];
       writeCart(updated);
       return updated;
     });
@@ -304,7 +305,7 @@ export default function BooksPage() {
             )}
           </div>
           <h4 className="text-base font-bold leading-snug group-hover:text-[#7D5A34] transition-colors">{book.title}</h4>
-          <p className="font-sans text-xs text-[#1A1A1A]/70 mt-1">By {book.author ?? 'Unknown'}</p>
+          <p className="font-sans text-xs text-[#1A1A1A]/70 mt-1">By {formatAuthors(book.authors)}</p>
           {book.isbn && <p className="font-mono text-[8px] text-[#1A1A1A]/40 mt-1.5 uppercase">ISBN: {book.isbn}</p>}
           {book.language && <p className="font-sans text-[8px] text-[#1A1A1A]/40 mt-0.5 uppercase tracking-wider">{book.language}</p>}
         </button>
@@ -797,7 +798,7 @@ Discover works in our {activeTheme.category.title} collection. Click on any cove
                   <div key={`max-${item.id}`} className="grid grid-cols-1 sm:grid-cols-5 items-center gap-3 sm:gap-0 py-3 border-b border-[#1A1A1A]/5 font-sans text-xs">
                     <div className="col-span-3">
                       <p className="font-serif font-bold text-sm text-[#1A1A1A]">{item.title}</p>
-                      <p className="text-[10px] text-[#1A1A1A]/60 italic mt-0.5">By {item.author}</p>
+                      <p className="text-[10px] text-[#1A1A1A]/60 italic mt-0.5">By {formatAuthors(item.authors)}</p>
                     </div>
                     <div className="flex items-center justify-center gap-3">
                       <button onClick={() => decreaseQuantity(item.id)} className="w-6 h-6 rounded-full border border-[#1A1A1A]/20 flex items-center justify-center hover:bg-[#1A1A1A] hover:text-[#FBFBFA] transition-all font-bold select-none">—</button>

@@ -7,6 +7,7 @@
 // /api/payments/webhook. Read by this lib (profile + admin).
 
 import { db } from './firebase';
+import { normalizeAuthors } from './authors';
 import {
   collection,
   doc,
@@ -43,7 +44,7 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
 export interface OrderItem {
   id: string;
   title: string;
-  author?: string;
+  authors?: string[];
   price: number;         // customer-final unit price (₹, post-discount)
   quantity: number;
   weightGrams?: number;
@@ -132,7 +133,7 @@ function normItem(raw: any): OrderItem {
   return {
     id: raw.id ?? raw.bookId ?? '',
     title: raw.title ?? '',
-    author: raw.author,
+    authors: normalizeAuthors(raw.authors, raw.author),
     price: Number(raw.price) || 0,
     quantity: Number(raw.quantity) || 1,
     weightGrams: raw.weightGrams != null ? Number(raw.weightGrams) : undefined,

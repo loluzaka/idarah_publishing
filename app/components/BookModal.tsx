@@ -10,6 +10,7 @@ import { stockLabel, isPurchasable, getStockStatus } from '@/app/lib/stock';
 import { bookJsonLd, jsonLdString } from '@/app/lib/seo';
 import { useUserProfile } from '@/app/hooks/useUserProfile';
 import { customerPrice } from '@/app/lib/pricing';
+import { formatAuthors } from '@/app/lib/authors';
 
 interface Category {
   title: string;
@@ -19,7 +20,8 @@ interface Category {
 interface BookDetail {
   _id: string;
   title: string;
-  author: string;
+  authors: string[];
+  authorIds?: string[];
   isbn?: string;
   series?: string;
   publisher?: string;
@@ -40,7 +42,7 @@ interface BookDetail {
 interface RelatedBook {
   _id: string;
   title: string;
-  author: string;
+  authors: string[];
   price: number;
   coverImage?: any;
 }
@@ -161,7 +163,8 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
           originalPrice,
           stock,
           publisher,
-          "author": author->name,
+          "authors": authors[]->name,
+          "authorIds": authors[]._ref,
           "categories": categories[]->{title, slug},
           "contentsImages": contentsImages[],
           "previewImages": previewImages[],
@@ -174,7 +177,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
           addRecentlyViewedBook({
             _id: data._id,
             title: data.title,
-            author: data.author,
+            authors: data.authors,
             series: data.series,
             publisher: data.publisher,
             categories: data.categories,
@@ -192,20 +195,20 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
             }
           }
 
-          // Related books: same author OR overlapping category, exclude self
+          // Related books: share any contributor OR have overlapping categories.
           const catSlugs = (data.categories ?? []).map((c: any) => c?.slug?.current ?? c?.slug ?? '').filter(Boolean);
           const relatedQuery = `*[_type == "book" && _id != $bookId && (
-            "author" == $author ||
+            count(authors[_ref in $authorIds]) > 0 ||
             count(categories[]->slug.current[@ in $catSlugs]) > 0
           )][0...4]{
             _id, title,
-            "author": author->name,
+            "authors": authors[]->name,
             price,
             coverImage
           }`;
           const related: RelatedBook[] = await client.fetch(relatedQuery, {
             bookId,
-            author: data.author ?? '',
+            authorIds: data.authorIds ?? [],
             catSlugs,
           }).catch(() => []);
           setRelatedBooks(related ?? []);
@@ -312,7 +315,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
     bookJsonLd({
       _id: book._id,
       title: book.title,
-      author: book.author,
+      authors: book.authors,
       isbn: book.isbn,
       description: book.description,
       publisher: book.publisher,
@@ -447,7 +450,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                 )}
                 <h3 className="text-2xl font-normal leading-snug tracking-tight font-serif text-[#1A1A1A]">{book.title}</h3>
                 <p className="font-sans text-xs text-[#1A1A1A]/70 mt-1">
-                  By <span className="font-semibold text-[#1A1A1A]">{book.author}</span>
+                  By <span className="font-semibold text-[#1A1A1A]">{formatAuthors(book.authors)}</span>
                 </p>
 
                 {/* Average rating display */}
@@ -627,7 +630,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                           )}
                         </div>
                         <p className="font-serif text-[11px] font-bold leading-snug line-clamp-2 text-[#1A1A1A] group-hover:text-[#7D5A34] transition-colors">{rb.title}</p>
-                        <p className="font-sans text-[9px] text-[#1A1A1A]/50 mt-0.5 truncate">{rb.author ?? ''}</p>
+                        <p className="font-sans text-[9px] text-[#1A1A1A]/50 mt-0.5 truncate">{formatAuthors(rb.authors, '')}</p>
                         <p className="font-sans text-[11px] font-bold mt-1">₹{rb.price}</p>
                       </button>
                     );

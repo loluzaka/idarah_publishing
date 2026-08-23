@@ -10,7 +10,8 @@ import {
   getRecentSearches,
   getRecommendations,
 } from './lib/recommendations';
-import { CartItem, writeCart, clearCart as clearCartStorage } from './lib/cart';
+import { CartItem, readCart, writeCart, clearCart as clearCartStorage } from './lib/cart';
+import { formatAuthors } from './lib/authors';
 import { getRecommendedCollections, ScoredCollection } from './lib/recommendations';
 import {
   BookOpen,
@@ -27,7 +28,7 @@ import { customerPrice } from './lib/pricing';
 interface CollectionBook {
   _id: string;
   title: string;
-  author?: string | null;
+  authors?: string[] | null;
   price: number;
   originalPrice?: number;
   stock?: number;
@@ -60,7 +61,7 @@ interface HomepageSlide {
 interface Book {
   _id: string;
   title: string;
-  author: string;
+  authors: string[];
   price: number;
   originalPrice?: number;
   series?: string;
@@ -108,7 +109,7 @@ export default function HomePage() {
 
     const localCart = localStorage.getItem('iad_cart');
     if (localCart) {
-      setCart(JSON.parse(localCart));
+      setCart(readCart());
       setIsCartOpen(true);
     }
 
@@ -119,7 +120,7 @@ export default function HomePage() {
             _id, title, slug, description, bannerImage, thumbnailImage, displayStyle, featured, priority,
             "books": books[]->{
               _id, title,
-              "author": author->name,
+              "authors": authors[]->name,
               price, originalPrice, stock, coverImage
             }
           }
@@ -129,7 +130,7 @@ export default function HomePage() {
         const data = await client.fetch(`*[_type == "book"] {
   _id,
   title,
-  "author": author->name,
+  "authors": authors[]->name,
   price,
   originalPrice,
   series,
@@ -263,14 +264,13 @@ const hasHeroSlides = heroSlides.length > 0;
           {
             id: book._id,
             title: book.title,
-            author: book.author,
+            authors: book.authors ?? [],
             price: priced.finalPrice,
             quantity: 1
           }
         ];
       }
-      localStorage.setItem('iad_cart', JSON.stringify(updatedCart));
-      setTimeout(() => { window.dispatchEvent(new Event('storage')); }, 0);
+      writeCart(updatedCart);
       return updatedCart;
     });
     setIsCartOpen(true);
@@ -289,8 +289,7 @@ const hasHeroSlides = heroSlides.length > 0;
           item.id === bookId ? { ...item, quantity: item.quantity - 1 } : item
         );
       }
-      localStorage.setItem('iad_cart', JSON.stringify(updatedCart));
-      setTimeout(() => { window.dispatchEvent(new Event('storage')); }, 0);
+      writeCart(updatedCart);
       return updatedCart;
     });
   };
@@ -337,7 +336,7 @@ const hasHeroSlides = heroSlides.length > 0;
             </div>
           </div>
           <h4 className="text-base font-bold leading-snug group-hover:text-[#7D5A34] transition-colors">{book.title}</h4>
-          <p className="font-sans text-xs text-[#1A1A1A]/70 mt-1">By {book.author}</p>
+          <p className="font-sans text-xs text-[#1A1A1A]/70 mt-1">By {formatAuthors(book.authors)}</p>
         </button>
 
         <div className="border-t border-[#1A1A1A]/10 pt-3 mt-4 flex items-center justify-between">
@@ -699,7 +698,7 @@ const hasHeroSlides = heroSlides.length > 0;
                   <div key={`max-home-${item.id}`} className="grid grid-cols-1 sm:grid-cols-5 items-center gap-3 sm:gap-0 py-3 border-b border-[#1A1A1A]/5 font-sans text-xs">
                     <div className="col-span-3">
                       <p className="font-serif font-bold text-sm text-[#1A1A1A]">{item.title}</p>
-                      <p className="text-[10px] text-[#1A1A1A]/60 italic mt-0.5">By {item.author}</p>
+                      <p className="text-[10px] text-[#1A1A1A]/60 italic mt-0.5">By {formatAuthors(item.authors)}</p>
                     </div>
 
                     <div className="flex items-center justify-center gap-3">

@@ -104,7 +104,7 @@ export async function POST(req: Request) {
     // 3. Fetch real prices + weights from Sanity. NEVER use client-supplied prices.
     const ids = items.map((i: any) => i.bookId);
     const books = await client.fetch(
-      `*[_type == "book" && _id in $ids]{ _id, title, price, weightGrams }`,
+      `*[_type == "book" && _id in $ids]{ _id, title, "authors": authors[]->name, price, weightGrams }`,
       { ids }
     );
     const byId = new Map<string, any>(books.map((b: any) => [b._id, b]));
@@ -127,6 +127,7 @@ export async function POST(req: Request) {
       lineItems.push({
         id: book._id,
         title: book.title,
+        authors: Array.isArray(book.authors) ? book.authors.filter((name: unknown): name is string => typeof name === 'string') : [],
         price: unitPrice,
         quantity: qty,
         ...(book.weightGrams != null ? { weightGrams: Number(book.weightGrams) } : {}),

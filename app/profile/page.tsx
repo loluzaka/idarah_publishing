@@ -6,6 +6,7 @@ import { useAuth } from '@/app/context/AuthContext';
 import { client, urlFor } from '@/app/sanityClient';
 import { getWishlist, removeFromWishlist } from '@/app/lib/wishlist';
 import { getRecentlyViewedBooks } from '@/app/lib/recommendations';
+import { formatAuthors } from '@/app/lib/authors';
 import { getAddresses, saveAddress, deleteAddress, Address } from '@/app/lib/addresses';
 import { getUserOrders, STATUS_LABELS, Order } from '@/app/lib/orders';
 import { isAdmin } from '@/app/lib/admin';
@@ -35,7 +36,7 @@ const TABS: { id: TabId; label: string; Icon: any }[] = [
   { id: 'account',   label: 'Account',          Icon: Settings },
 ];
 
-interface BookLite { _id: string; title: string; author?: string; price: number; coverImage?: any; }
+interface BookLite { _id: string; title: string; authors?: string[]; price: number; coverImage?: any; }
 
 export default function ProfilePage() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -90,7 +91,7 @@ export default function ProfilePage() {
           const ids = entries.map(e => e.bookId);
           const books: BookLite[] = await client.fetch(
             `*[_type == "book" && _id in $ids]{
-              _id, title, "author": author->name, price, coverImage
+              _id, title, "authors": authors[]->name, price, coverImage
             }`,
             { ids }
           );
@@ -112,7 +113,7 @@ export default function ProfilePage() {
       const ids = recent.map(r => r._id);
       try {
         const books: BookLite[] = await client.fetch(
-          `*[_type == "book" && _id in $ids]{ _id, title, "author": author->name, price, coverImage }`,
+          `*[_type == "book" && _id in $ids]{ _id, title, "authors": authors[]->name, price, coverImage }`,
           { ids }
         );
         // Preserve order from recent (most recent first)
@@ -248,7 +249,7 @@ export default function ProfilePage() {
                           </div>
                           {order.items?.map((it, i: number) => (
                             <div key={i} className="flex justify-between text-xs py-1">
-                              <span className="font-serif font-bold">{it.title}</span>
+                              <span className="font-serif font-bold">{it.title}{it.authors?.length ? ` — ${formatAuthors(it.authors)}` : ''}</span>
                               <span>₹{it.price * it.quantity}</span>
                             </div>
                           ))}
@@ -286,7 +287,7 @@ export default function ProfilePage() {
                           {book.coverImage ? <img src={urlFor(book.coverImage).width(200).url()} alt={book.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl opacity-20 font-bold">IAD</div>}
                         </div>
                         <p className="font-serif text-xs font-bold line-clamp-2">{book.title}</p>
-                        <p className="text-[10px] text-[#1A1A1A]/50 mt-0.5">By {book.author}</p>
+                        <p className="text-[10px] text-[#1A1A1A]/50 mt-0.5">By {formatAuthors(book.authors)}</p>
                         <p className="text-xs font-bold mt-1">₹{book.price}</p>
                       </div>
                     ))}
@@ -311,7 +312,7 @@ export default function ProfilePage() {
                           {book.coverImage ? <img src={urlFor(book.coverImage).width(200).url()} alt={book.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl opacity-20 font-bold">IAD</div>}
                         </div>
                         <p className="font-serif text-xs font-bold line-clamp-2">{book.title}</p>
-                        <p className="text-[10px] text-[#1A1A1A]/50 mt-0.5">By {book.author}</p>
+                        <p className="text-[10px] text-[#1A1A1A]/50 mt-0.5">By {formatAuthors(book.authors)}</p>
                         <p className="text-xs font-bold mt-1">₹{book.price}</p>
                       </div>
                     ))}
