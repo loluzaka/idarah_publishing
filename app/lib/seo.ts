@@ -26,6 +26,7 @@ interface PageMetaInput {
 
 /** Build a full Next.js Metadata object with sensible defaults. */
 export function buildMetadata(input: PageMetaInput = {}): Metadata {
+  
   const title = input.title ? `${input.title} · ${SITE.name}` : `${SITE.name} — ${SITE.tagline}`;
   const description = input.description ?? SITE.description;
   const url = `${SITE.url}${input.path ?? '/'}`;
@@ -36,6 +37,10 @@ export function buildMetadata(input: PageMetaInput = {}): Metadata {
   return {
     title,
     description,
+    icons: {
+      icon: [{ url: '/icon.png', sizes: '512x512', type: 'image/png' }, '/favicon.ico'],
+      apple: '/apple-icon.png',
+    },
     alternates: { canonical: url },
     openGraph: {
       title,

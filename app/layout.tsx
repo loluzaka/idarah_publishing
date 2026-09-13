@@ -7,6 +7,7 @@ import { AuthProvider } from "@/app/context/AuthContext";
 import { buildMetadata, organizationJsonLd, jsonLdString } from "@/app/lib/seo";
 import { Toaster } from "react-hot-toast";
 import Script from "next/script";
+import { GoogleAnalytics } from '@next/third-parties/google';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair" });
@@ -41,6 +42,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <Footer />
           <Toaster position="bottom-right" />
         </AuthProvider>
+        {process.env.NEXT_PUBLIC_GA_ID ? (
+  <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+) : null}
       </body>
     </html>
   );
