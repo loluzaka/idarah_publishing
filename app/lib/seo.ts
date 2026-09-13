@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 
 export const SITE = {
   name: 'Idarah-i Adabiyat-i Dilli',
+  alternateName: 'Idarah Books',
   tagline: 'Classical Publications & Historical Literature',
   description:
     'Idarah-i Adabiyat-i Dilli — publishing house . Curated catalog of Urdu literature, historical translations, and academic reference works from Delhi since 1970.',
@@ -72,6 +73,7 @@ export function organizationJsonLd() {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: SITE.name,
+    alternateName: (SITE as { alternateName?: string }).alternateName ?? 'Idarah Books',
     url: SITE.url,
     logo: `${SITE.url}/logo.svg`,
     description: SITE.description,
