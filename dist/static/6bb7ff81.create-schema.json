@@ -19,6 +19,12 @@
         "title": "Author Name"
       },
       {
+        "description": "Optional. Short form shown on small book cards, e.g. \"Prof. Ansari\" or \"Qureshi\". The full name is always shown on the book overlay and detail page. If left empty, the card automatically shows the first and last word of the full name.",
+        "name": "shortName",
+        "type": "string",
+        "title": "Short Name (for small cards)"
+      },
+      {
         "options": {
           "source": "name",
           "maxLength": 96
@@ -65,23 +71,6 @@
         "name": "topics",
         "type": "array",
         "title": "Topics of Books (Genres/Expertise)"
-      },
-      {
-        "description": "Select the books this author has written.",
-        "of": [
-          {
-            "to": [
-              {
-                "type": "book"
-              }
-            ],
-            "type": "reference",
-            "title": "Reference to publications archive"
-          }
-        ],
-        "name": "books",
-        "type": "array",
-        "title": "Linked Publications Reference Archive"
       }
     ],
     "name": "author",
@@ -103,19 +92,30 @@
               {
                 "flag": "presence",
                 "constraint": "required"
+              },
+              {
+                "flag": "min",
+                "constraint": 1
               }
-            ]
+            ],
+            "message": "Add at least one author or contributor."
           }
         ],
-        "description": "Link this book to an official Author Profile document card.",
-        "to": [
+        "description": "Add every author, editor, translator, or contributor in the order they should be credited.",
+        "of": [
           {
-            "type": "author"
+            "to": [
+              {
+                "type": "author"
+              }
+            ],
+            "type": "reference",
+            "title": "Reference to authors & contributors"
           }
         ],
-        "name": "author",
-        "type": "reference",
-        "title": "Author / Translator"
+        "name": "authors",
+        "type": "array",
+        "title": "Authors / Contributors"
       },
       {
         "name": "price",

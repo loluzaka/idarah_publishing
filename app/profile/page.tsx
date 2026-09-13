@@ -168,7 +168,7 @@ export default function ProfilePage() {
   if (authLoading || !user) {
     return (
       <div className="min-h-screen bg-[#FBFBFA] flex items-center justify-center font-sans">
-        <p className="text-xs uppercase tracking-widest text-[#1A1A1A]/40 animate-pulse">Syncing Scholar Dossier...</p>
+        <p className="text-xs uppercase tracking-widest text-[#1A1A1A]/40 animate-pulse">Syncing Account Details...</p>
       </div>
     );
   }
@@ -183,7 +183,7 @@ export default function ProfilePage() {
             <UserIcon className="w-6 h-6 text-[#7D5A34]" strokeWidth={1.5} />
             <div>
               <span className="text-[10px] uppercase tracking-[0.25em] text-[#7D5A34] font-bold block mb-1">Idarah-i Adabiyat-i Dilli</span>
-              <h2 className="font-serif text-3xl font-normal leading-tight">Scholar Profile</h2>
+              <h2 className="font-serif text-3xl font-normal leading-tight">Your Profile</h2>
               <p className="text-xs text-[#1A1A1A]/50 mt-1">{user.email}</p>
             </div>
           </div>

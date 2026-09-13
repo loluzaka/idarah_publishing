@@ -1,5 +1,5 @@
 {
-  "createdAt": "2026-08-13T18:09:39.360Z",
+  "createdAt": "2026-08-23T13:26:20.123Z",
   "studioVersion": "5.31.1",
   "version": 3,
   "workspaces": [
@@ -13,7 +13,7 @@
       },
       "name": "default",
       "projectId": "lvzmkv9e",
-      "schema": "f9bb94dd.create-schema.json",
+      "schema": "6bb7ff81.create-schema.json",
       "title": "Idarah-i Adabiyat-i Dilli",
       "tools": "a1fd46b5.create-tools.json"
     }

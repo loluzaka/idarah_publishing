@@ -7,8 +7,8 @@ export const SITE = {
   tagline: 'Classical Publications & Historical Literature',
   description:
     'Idarah-i Adabiyat-i Dilli — publishing house . Curated catalog of Urdu literature, historical translations, and academic reference works from Delhi since 1970.',
-  // Set NEXT_PUBLIC_SITE_URL in .env.local (e.g. https://idarah-adabiyat.com)
-  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://idarah-adabiyat.example.com',
+  // Set NEXT_PUBLIC_SITE_URL in .env.local (e.g. https://idarahbooks.in)
+  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://idarahbooks.in',
   ogImage: '/og-default.jpg',
   twitterHandle: '', // e.g. '@idarahadab'
   publisher: 'Idarah-i Adabiyat-i Dilli',
