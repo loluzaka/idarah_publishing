@@ -8,8 +8,7 @@ export type AccountType =
   | 'regular'
   | 'student'
   | 'author'
-  | 'publication_house'
-  | 'distributor'
+  | 'trade_partner'
   | 'library'
   | 'institution';
 
@@ -20,17 +19,37 @@ export interface AccountTypeMeta {
   label: string;
   requiresVerification: boolean;
   description: string;
+  /** Default discount % (0–100) pre-filled on the verification page. Admin can override per user. */
+  defaultDiscount: number;
 }
 
 export const ACCOUNT_TYPES: AccountTypeMeta[] = [
-  { value: 'regular',           label: 'Regular Customer',    requiresVerification: false, description: 'Standard retail account.' },
-  { value: 'student',           label: 'Student',             requiresVerification: true,  description: 'Requires student ID verification.' },
-  { value: 'author',            label: 'Author',              requiresVerification: true,  description: 'For published authors — verification required.' },
-  { value: 'publication_house', label: 'Publication House',   requiresVerification: true,  description: 'Trade account for publishers.' },
-  { value: 'distributor',       label: 'Distributor',         requiresVerification: true,  description: 'Wholesale distributor account.' },
-  { value: 'library',           label: 'Library',             requiresVerification: true,  description: 'For institutional libraries.' },
-  { value: 'institution',       label: 'Educational Institution', requiresVerification: true, description: 'Colleges, universities, schools.' },
+  { value: 'regular',       label: 'Regular Customer',               requiresVerification: false, defaultDiscount: 0,  description: 'Standard retail account.' },
+  { value: 'student',       label: 'Student',                        requiresVerification: true,  defaultDiscount: 10, description: 'Requires student ID verification.' },
+  { value: 'author',        label: 'Author',                         requiresVerification: true,  defaultDiscount: 15, description: 'For published authors — verification required.' },
+  { value: 'trade_partner', label: 'Bookseller / Publisher / Distributor', requiresVerification: true, defaultDiscount: 30, description: 'Trade account — settle the exact rate per partner on approval.' },
+  { value: 'library',       label: 'Library',                        requiresVerification: true,  defaultDiscount: 15, description: 'For institutional libraries.' },
+  { value: 'institution',   label: 'Educational Institution',        requiresVerification: true,  defaultDiscount: 15, description: 'Colleges, universities, schools.' },
 ];
+
+/**
+ * Legacy type values folded into `trade_partner` by the 2026-09 rename.
+ * Keep in sync with any type you retire in the future.
+ */
+export const LEGACY_TRADE_TYPES = ['distributor', 'publication_house'] as const;
+
+/** Map a stored value (possibly legacy) to its canonical type. */
+export function canonicalAccountType(value: unknown): AccountType {
+  if (value === 'distributor' || value === 'publication_house') return 'trade_partner';
+  const known = ACCOUNT_TYPES.find(a => a.value === value);
+  return known ? known.value : 'regular';
+}
+
+/** Default discount % for a type (legacy values resolve to their canonical type). */
+export function defaultDiscountFor(value: unknown): number {
+  const meta = ACCOUNT_TYPES.find(a => a.value === canonicalAccountType(value));
+  return meta?.defaultDiscount ?? 0;
+}
 
 export interface UserProfile {
   uid: string;
@@ -60,7 +79,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
       name: data.name,
       email: data.email,
       phone: data.phone,
-      accountType: data.accountType ?? 'regular',
+      accountType: canonicalAccountType(data.accountType),
       verificationStatus: data.verificationStatus ?? 'not_required',
       discountRate: Number.isFinite(Number(data.discountRate)) ? Number(data.discountRate) : 0,
       createdAt: data.createdAt?.toMillis?.(),
@@ -88,7 +107,7 @@ export async function createUserProfile(input: {
   accountType?: AccountType;
 }): Promise<void> {
   const { uid, name, email, phone } = input;
-  const accountType: AccountType = input.accountType ?? 'regular';
+  const accountType: AccountType = canonicalAccountType(input.accountType ?? 'regular');
   const meta = ACCOUNT_TYPES.find(a => a.value === accountType);
   const verificationStatus: VerificationStatus = meta?.requiresVerification ? 'pending' : 'not_required';
 
@@ -134,8 +153,38 @@ export async function adminSetVerification(
   await updateDoc(doc(db, 'users', uid), payload);
 }
 
-export async function adminSetAccountType(uid: string, accountType: AccountType): Promise<void> {
-  await updateDoc(doc(db, 'users', uid), { accountType, updatedAt: serverTimestamp() });
+export async function adminSetAccountType(uid: string, accountType: AccountType, approvedByUid?: string): Promise<void> {
+  const canonical = canonicalAccountType(accountType);
+  const meta = ACCOUNT_TYPES.find(a => a.value === canonical);
+  const payload: any = { accountType: canonical, updatedAt: serverTimestamp() };
+  // Re-derive verification status from the new type so the two fields never contradict:
+  // non-verified types → not_required, verified types → back to pending for review.
+  if (meta) {
+    payload.verificationStatus = meta.requiresVerification ? 'pending' : 'not_required';
+    if (!meta.requiresVerification) {
+      payload.approvedAt = null;
+      payload.approvedBy = approvedByUid ?? null;
+    }
+  }
+  await updateDoc(doc(db, 'users', uid), payload);
+}
+
+/**
+ * Change a user's type AND set their discount in one write.
+ * If `discountRate` is omitted, it resets to the new type's default so a
+ * stale rate from the old type never carries over silently.
+ */
+export async function adminReassignAccount(
+  uid: string,
+  accountType: AccountType,
+  approvedByUid: string,
+  discountRate?: number
+): Promise<void> {
+  await adminSetAccountType(uid, accountType, approvedByUid);
+  const rate = typeof discountRate === 'number' && Number.isFinite(discountRate)
+    ? discountRate
+    : defaultDiscountFor(accountType);
+  await adminSetDiscountRate(uid, rate);
 }
 
 export async function adminSetDiscountRate(uid: string, discountRate: number): Promise<void> {
@@ -154,7 +203,7 @@ export async function listPendingVerifications(): Promise<UserProfile[]> {
         name: data.name,
         email: data.email,
         phone: data.phone,
-        accountType: data.accountType ?? 'regular',
+        accountType: canonicalAccountType(data.accountType),
         verificationStatus: data.verificationStatus,
         discountRate: Number(data.discountRate) || 0,
         createdAt: data.createdAt?.toMillis?.(),

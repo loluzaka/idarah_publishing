@@ -171,11 +171,12 @@ export default function LoginPage() {
       onChange={e => setAccountType(e.target.value as AccountType)}
       className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none focus:border-[#7D5A34] rounded-sm text-[#1A1A1A]"
     >
-      <option value="regular">Reader / Regular Customer</option>
-      <option value="student">Student / Scholar (Verification Required)</option>
-      <option value="author">Author / Academic Contributor</option>
+      <option value="regular">Regular Customer</option>
+      <option value="student">Student / Scholar</option>
+      <option value="trade_partner">Bookseller / Publisher / Distributor</option>
+      <option value="author">Author </option>
       <option value="library">Library / Institutional Buyer</option>
-      <option value="distributor">Distributor / Trade Partner</option>
+      
     </select>
     
     {selectedMeta?.requiresVerification && (

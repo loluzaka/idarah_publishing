@@ -6,6 +6,7 @@ import { ShieldCheck, Check, X, Percent } from 'lucide-react';
 import {
   listPendingVerifications,
   adminSetVerification,
+  defaultDiscountFor,
   ACCOUNT_TYPES,
   UserProfile,
 } from '@/app/lib/userProfile';
@@ -21,6 +22,8 @@ export default function AdminVerificationPage() {
     setLoading(true);
     const list = await listPendingVerifications();
     setPending(list);
+    // Pre-fill each row with its type's default discount — you still edit per user.
+    setDiscounts(Object.fromEntries(list.map(u => [u.uid, String(defaultDiscountFor(u.accountType))])));
     setLoading(false);
   };
 
@@ -45,6 +48,8 @@ export default function AdminVerificationPage() {
   };
 
   const labelFor = (t: string) => ACCOUNT_TYPES.find(a => a.value === t)?.label ?? t;
+
+  const defaultFor = (u: UserProfile) => defaultDiscountFor(u.accountType);
 
   return (
     <div>
@@ -92,6 +97,7 @@ export default function AdminVerificationPage() {
                   <div className="flex flex-col gap-2 md:min-w-[260px]">
                     <label className="text-[9px] uppercase tracking-widest font-bold text-[#1A1A1A]/40 flex items-center gap-1">
                       <Percent className="w-3 h-3" /> Discount Rate (%)
+                      <span className="normal-case font-normal tracking-normal">— type default {defaultFor(u)}%</span>
                     </label>
                     <input
                       type="number"
