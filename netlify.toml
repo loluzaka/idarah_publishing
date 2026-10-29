@@ -1,0 +1,6 @@
+# firebase-admin 14 -> jwks-rsa 4 -> jose 6 (ESM-only) is loaded with require(),
+# which needs Node >= 22.12. Pin both the build and the serverless function
+# runtime so API routes don't fail with ERR_REQUIRE_ESM.
+[build.environment]
+  NODE_VERSION = "22"
+  AWS_LAMBDA_JS_RUNTIME = "nodejs22.x"
