@@ -6,7 +6,6 @@ import Footer from "./components/Footer";
 import { AuthProvider } from "@/app/context/AuthContext";
 import { buildMetadata, organizationJsonLd, jsonLdString } from "@/app/lib/seo";
 import { Toaster } from "react-hot-toast";
-import Script from "next/script";
 import { GoogleAnalytics } from '@next/third-parties/google';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -31,11 +30,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: jsonLdString(organizationJsonLd()) }}
         />
-        {/* Razorpay Checkout — loaded once, used by PayButton */}
-        <Script
-          src="https://checkout.razorpay.com/v1/checkout.js"
-          strategy="afterInteractive"
-        />
+        {/* Razorpay scripts (Magic + standard) are loaded on demand by PayButton. */}
         <AuthProvider>
           <HeaderWrapper />
           <main className="flex-1">{children}</main>

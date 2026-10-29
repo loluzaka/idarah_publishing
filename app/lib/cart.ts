@@ -14,8 +14,9 @@ const CART_KEY = 'iad_cart';
 
 // Coerce arbitrary parsed values into a valid CartItem, including carts written
 // before books supported multiple authors (`author: string`).
-export function normalizeCartItem(raw: any): CartItem | null {
-  if (!raw || typeof raw !== 'object') return null;
+export function normalizeCartItem(input: unknown): CartItem | null {
+  if (!input || typeof input !== 'object') return null;
+  const raw = input as Record<string, unknown>;
   const id = typeof raw.id === 'string' ? raw.id : typeof raw.bookId === 'string' ? raw.bookId : '';
   if (!id) return null;
   const price = Number(raw.price);
@@ -29,10 +30,8 @@ export function normalizeCartItem(raw: any): CartItem | null {
   };
 }
 
-export function readCart(): CartItem[] {
-  if (typeof window === 'undefined') return [];
+function parseCart(raw: string | null): CartItem[] {
   try {
-    const raw = window.localStorage.getItem(CART_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed)
       ? parsed.map(normalizeCartItem).filter((i): i is CartItem => i !== null)
@@ -40,6 +39,34 @@ export function readCart(): CartItem[] {
   } catch {
     return [];
   }
+}
+
+export function readCart(): CartItem[] {
+  if (typeof window === 'undefined') return [];
+  return parseCart(window.localStorage.getItem(CART_KEY));
+}
+
+// useSyncExternalStore plumbing: the snapshot is the raw stored string (a stable
+// primitive), so React only re-renders when the cart actually changes.
+export function subscribeCart(onChange: () => void): () => void {
+  window.addEventListener('storage', onChange);
+  window.addEventListener('cartUpdate', onChange);
+  return () => {
+    window.removeEventListener('storage', onChange);
+    window.removeEventListener('cartUpdate', onChange);
+  };
+}
+
+export function getCartSnapshot(): string {
+  try {
+    return window.localStorage.getItem(CART_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+export function parseCartSnapshot(snapshot: string): CartItem[] {
+  return parseCart(snapshot || null);
 }
 
 export function writeCart(items: CartItem[]): void {

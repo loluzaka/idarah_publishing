@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
-import Razorpay from "razorpay";
 import { verifyIdToken, getAdminDb } from "@/app/lib/firebase-admin";
-import { client } from "@/app/sanityClient";
+import { client, urlFor } from "@/app/sanityClient";
 import { calculateShipping, normalizeCountry, isIndianCountry } from "@/app/lib/shipping";
 import { rateLimit, getClientIp, validatePhone, validateEmail, stripTags } from "@/app/lib/security";
-
-// Razorpay is initialised once per cold start with your server-side keys.
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+import { getRazorpay, isMagicCheckoutEnabled } from "@/app/lib/razorpay-order";
 
 interface AddressInput {
   addressLine1?: string;
@@ -28,23 +22,66 @@ function validateForeignPhone(phone: unknown): boolean {
   return /^\+?\d{7,15}$/.test(digits);
 }
 
+interface SanityBook {
+  _id: string;
+  title?: string;
+  authors?: unknown;
+  price?: number;
+  weightGrams?: number | null;
+  coverImage?: unknown;
+}
+
+interface OrderLineItem {
+  id: string;
+  title?: string;
+  authors: string[];
+  price: number;
+  quantity: number;
+  weightGrams?: number;
+}
+
+interface RzpLineItem {
+  sku: string;
+  variant_id: string;
+  price: number;
+  offer_price: number;
+  quantity: number;
+  name: string;
+  description: string;
+  image_url: string;
+  weight?: number;
+}
+
+// The SDK's typings don't cover Magic Checkout's line_items fields.
+type RzpOrderCreate = (params: Record<string, unknown>) => Promise<{ id: string; amount: number }>;
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://idarahbooks.in';
+
 // POST /api/checkout
-// Body: { items, address, customerName, customerPhone, customerEmail }
+// Body: { items, address, customerName, customerPhone, customerEmail,
+//         checkoutMode?: "auto" | "standard", orderId?: string }
 // Header: Authorization: Bearer <firebase id token>
 //
-// Straight-payment flow for DOMESTIC (India) and INTERNATIONAL orders:
-//   1. rate-limit + authenticate
-//   2. fetch REAL prices + weights from Sanity (never trust client prices)
-//   3. compute shipping: Gyan Post (India) or International Speed Post (foreign)
-//   4. apply the user's discount rate from Firestore
-//   5. create the Firestore order (status: pending_payment)
-//   6. create the Razorpay order
-//   7. return the razorpay order id + amount so the client opens checkout
+// Two payment flows, one endpoint:
+//
+//   MAGIC (primary) — Razorpay Magic Checkout. Used for Indian orders when
+//   NEXT_PUBLIC_RAZORPAY_MAGIC_CHECKOUT=true. The Razorpay order carries line
+//   items and EXCLUDES shipping: Razorpay collects the delivery address, asks
+//   /api/magic-checkout/shipping for the fee, and adds it to what the customer
+//   pays. The final address/shipping/amount are written back on payment
+//   (see markOrderPaid).
+//
+//   STANDARD (fallback) — the original in-house flow: our own address form,
+//   shipping computed here, a plain Razorpay order for the full total. Used for
+//   international orders, when Magic is disabled, when Magic order creation
+//   fails, or when the client retries with checkoutMode "standard" (e.g. the
+//   Magic script failed to load). A retry passes the existing `orderId` so the
+//   same Firestore order is reused instead of leaving an orphan behind.
 export async function POST(req: Request) {
   try {
     // 0. Rate limit (best-effort; see security.ts note re: serverless resets).
     const ip = getClientIp(req);
-    const rl = rateLimit(`checkout:${ip}`, 5, 60_000);
+    const rl = rateLimit(`checkout:${ip}`, 8, 60_000);
     if (!rl.ok) {
       return NextResponse.json(
         { error: `Too many attempts. Try again in ${rl.retryAfter}s.` },
@@ -58,13 +95,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const { items, address, customerName, customerPhone, customerEmail } =
-      await req.json();
+    const { items, address, customerName, customerPhone, customerEmail, checkoutMode, orderId: retryOrderId } =
+      (await req.json()) as {
+        items?: { bookId?: string; quantity?: unknown }[];
+        address?: AddressInput;
+        customerName?: unknown;
+        customerPhone?: unknown;
+        customerEmail?: unknown;
+        checkoutMode?: string;
+        orderId?: unknown;
+      };
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "cart is empty" }, { status: 400 });
     }
 
-    // 2. Validate + sanitise inputs.
+    // 2. Sanitise inputs (validated below, once we know which flow applies).
     const name = stripTags(customerName, 120);
     const phone = stripTags(customerPhone, 20);
     const email = stripTags(customerEmail, 254);
@@ -72,49 +117,34 @@ export async function POST(req: Request) {
     const country = normalizeCountry(addr.country) || 'india';
     const isDomestic = isIndianCountry(country);
 
-    if (!name.trim() || !phone.trim()) {
-      return NextResponse.json(
-        { error: "Please fill in name and phone." },
-        { status: 400 }
-      );
-    }
-    // Indian orders: strict Indian format. Foreign orders: lenient international format.
-    const phoneOk = isDomestic
-      ? validatePhone(phone)
-      : validateForeignPhone(phone);
-    if (!phoneOk) {
-      return NextResponse.json(
-        { error: isDomestic ? "Please enter a valid Indian phone number." : "Please enter a valid phone number (with country code, e.g. +1 555 000 1234)." },
-        { status: 400 }
-      );
-    }
+    const tryMagic = isMagicCheckoutEnabled() && isDomestic && checkoutMode !== "standard";
+
     if (email && !validateEmail(email)) {
       return NextResponse.json(
         { error: "Please enter a valid email address." },
         { status: 400 }
       );
     }
-    if (!addr.addressLine1?.trim() || !addr.city?.trim() || !addr.postalCode?.trim()) {
-      return NextResponse.json(
-        { error: "Please fill in address, city, and postal code." },
-        { status: 400 }
-      );
+    // Magic collects contact + address itself, so only sanity-check what was typed.
+    if (tryMagic && phone.trim() && !validatePhone(phone)) {
+      return NextResponse.json({ error: "Please enter a valid Indian phone number." }, { status: 400 });
     }
 
     // 3. Fetch real prices + weights from Sanity. NEVER use client-supplied prices.
-    const ids = items.map((i: any) => i.bookId);
-    const books = await client.fetch(
-      `*[_type == "book" && _id in $ids]{ _id, title, "authors": authors[]->name, price, weightGrams }`,
+    const ids = items.map((i) => i.bookId);
+    const books: SanityBook[] = await client.fetch(
+      `*[_type == "book" && _id in $ids]{ _id, title, "authors": authors[]->name, price, weightGrams, coverImage }`,
       { ids }
     );
-    const byId = new Map<string, any>(books.map((b: any) => [b._id, b]));
+    const byId = new Map<string, SanityBook>(books.map((b) => [b._id, b]));
 
     let subtotal = 0;
-    const lineItems: any[] = [];
+    const lineItems: OrderLineItem[] = [];
+    const rzpLineItems: RzpLineItem[] = [];
     const shippingItems: { quantity: number; weightGrams: number | null }[] = [];
 
     for (const item of items) {
-      const book = byId.get(item.bookId);
+      const book = item.bookId ? byId.get(item.bookId) : undefined;
       if (!book) {
         return NextResponse.json(
           { error: `book not found: ${item.bookId}` },
@@ -124,13 +154,29 @@ export async function POST(req: Request) {
       const qty = Math.max(1, Math.floor(Number(item.quantity) || 1));
       const unitPrice = Number(book.price) || 0;
       subtotal += unitPrice * qty;
+      const authors: string[] = Array.isArray(book.authors)
+        ? book.authors.filter((n: unknown): n is string => typeof n === 'string')
+        : [];
       lineItems.push({
         id: book._id,
         title: book.title,
-        authors: Array.isArray(book.authors) ? book.authors.filter((name: unknown): name is string => typeof name === 'string') : [],
+        authors,
         price: unitPrice,
         quantity: qty,
         ...(book.weightGrams != null ? { weightGrams: Number(book.weightGrams) } : {}),
+      });
+      let imageUrl = `${SITE_URL}/icon.png`;
+      try { if (book.coverImage) imageUrl = urlFor(book.coverImage).width(600).url(); } catch { /* keep fallback */ }
+      rzpLineItems.push({
+        sku: book._id,
+        variant_id: book._id,
+        price: Math.round(unitPrice * 100),
+        offer_price: Math.round(unitPrice * 100),
+        quantity: qty,
+        name: String(book.title || 'Book').slice(0, 125),
+        description: (authors.join(', ') || String(book.title || 'Book')).slice(0, 250),
+        image_url: imageUrl,
+        ...(book.weightGrams != null ? { weight: Number(book.weightGrams) } : {}),
       });
       shippingItems.push({
         quantity: qty,
@@ -164,9 +210,123 @@ export async function POST(req: Request) {
     if (total <= 0) {
       return NextResponse.json({ error: "invalid total" }, { status: 400 });
     }
-    const amountPaise = Math.round(total * 100);
 
-    // 7. Build the full address record.
+    // 7. Reuse the caller's pending order on a fallback retry, otherwise start a new one.
+    let orderRef = db.collection("orders").doc();
+    let isNewOrder = true;
+    let displayOrderId = `IAD-${Math.floor(100000 + Math.random() * 900000)}`;
+    if (typeof retryOrderId === "string" && retryOrderId) {
+      const existing = await db.collection("orders").doc(retryOrderId).get();
+      const data = existing.data();
+      if (!existing.exists || data?.uid !== uid || data?.status !== "pending_payment") {
+        return NextResponse.json({ error: "This order can no longer be retried. Please start again." }, { status: 409 });
+      }
+      orderRef = existing.ref;
+      isNewOrder = false;
+      displayOrderId = data?.orderId || displayOrderId;
+    }
+    const docId = orderRef.id;
+
+    const baseOrder = {
+      id: docId,
+      orderId: displayOrderId,
+      uid,
+      items: lineItems,
+      subtotal,
+      discountRate: rawRate, // store in your existing format (percent)
+      discountAmount,
+      shippingWeight: shippingCalc.totalWeight,
+      shippingCarrier: shippingCalc.carrier,
+      shippingZone: shippingCalc.zone?.label ?? null,
+      tax,
+      status: "pending_payment",
+      updatedAt: new Date(),
+      ...(isNewOrder ? { createdAt: new Date() } : {}),
+    };
+
+    // ── MAGIC (primary) ───────────────────────────────────────────────────────
+    if (tryMagic) {
+      // Razorpay adds shipping itself, so amount/line_items_total exclude it.
+      // The member discount is applied up front: lower BOTH by the same value
+      // (Razorpay's rule) and leave the per-item prices untouched.
+      const lineItemsPaise = rzpLineItems.reduce((s, li) => s + li.offer_price * li.quantity, 0);
+      const discountPaise = Math.round(discountAmount * 100);
+      const magicAmountPaise = lineItemsPaise - discountPaise;
+
+      if (magicAmountPaise >= 100) {
+        try {
+          const rzpOrder = await (getRazorpay().orders as unknown as { create: RzpOrderCreate }).create({
+            amount: magicAmountPaise,
+            currency: "INR",
+            receipt: docId,
+            line_items_total: magicAmountPaise,
+            line_items: rzpLineItems,
+            notes: {
+              orderId: docId,
+              uid,
+              ...(discountPaise > 0 ? { prediscount_applied: String(discountPaise) } : {}),
+            },
+          });
+
+          await orderRef.set(
+            {
+              ...baseOrder,
+              customerName: name,
+              customerPhone: phone,
+              customerEmail: email,
+              address: {
+                fullName: name, phone, email,
+                addressLine1: "", addressLine2: "", city: "", state: "", postalCode: "",
+                country: "India",
+              },
+              shippingCost: null, // filled in from Razorpay once paid
+              total: +(subtotal - discountAmount).toFixed(2), // excl. shipping until paid
+              checkoutType: "magic",
+              razorpayOrderId: rzpOrder.id,
+            },
+            { merge: true }
+          );
+
+          return NextResponse.json({
+            checkoutType: "magic",
+            orderId: docId,
+            displayOrderId,
+            razorpayOrderId: rzpOrder.id,
+            amount: rzpOrder.amount, // paise
+            discountPaise,
+          });
+        } catch (err) {
+          // Typically: Magic Checkout not yet enabled on this Razorpay account,
+          // or Razorpay is rejecting the payload. Don't strand the customer —
+          // drop to the standard flow below.
+          console.error("[checkout] Magic Checkout order failed, falling back to standard:", err);
+        }
+      }
+    }
+
+    // ── STANDARD (fallback) ───────────────────────────────────────────────────
+    if (!name.trim() || !phone.trim()) {
+      return NextResponse.json(
+        { error: "Please fill in name and phone." },
+        { status: 400 }
+      );
+    }
+    // Indian orders: strict Indian format. Foreign orders: lenient international format.
+    const phoneOk = isDomestic ? validatePhone(phone) : validateForeignPhone(phone);
+    if (!phoneOk) {
+      return NextResponse.json(
+        { error: isDomestic ? "Please enter a valid Indian phone number." : "Please enter a valid phone number (with country code, e.g. +1 555 000 1234)." },
+        { status: 400 }
+      );
+    }
+    if (!addr.addressLine1?.trim() || !addr.city?.trim() || !addr.postalCode?.trim()) {
+      return NextResponse.json(
+        { error: "Please fill in address, city, and postal code." },
+        { status: 400 }
+      );
+    }
+
+    const amountPaise = Math.round(total * 100);
     const fullAddress = {
       fullName: name,
       phone,
@@ -179,34 +339,21 @@ export async function POST(req: Request) {
       country: addr.country || "India",
     };
 
-    // 8. Create the Firestore order (pending_payment) with a readable order id.
-    const orderRef = db.collection("orders").doc();
-    const docId = orderRef.id;
-    const orderId = `IAD-${Math.floor(100000 + Math.random() * 900000)}`;
-    await orderRef.set({
-      id: docId,
-      orderId,
-      uid,
-      customerName: name,
-      customerPhone: phone,
-      customerEmail: email,
-      items: lineItems,
-      address: fullAddress,
-      subtotal,
-      discountRate: rawRate, // store in your existing format (percent)
-      discountAmount,
-      shippingCost: shipping,
-      shippingWeight: shippingCalc.totalWeight,
-      shippingCarrier: shippingCalc.carrier,
-      shippingZone: shippingCalc.zone?.label ?? null,
-      tax,
-      total,
-      status: "pending_payment",
-      createdAt: new Date(),
-    });
+    await orderRef.set(
+      {
+        ...baseOrder,
+        customerName: name,
+        customerPhone: phone,
+        customerEmail: email,
+        address: fullAddress,
+        shippingCost: shipping,
+        total,
+        checkoutType: "standard",
+      },
+      { merge: true }
+    );
 
-    // 9. Create the Razorpay order tied to this order.
-    const rzpOrder = await razorpay.orders.create({
+    const rzpOrder = await getRazorpay().orders.create({
       amount: amountPaise,
       currency: "INR",
       receipt: docId,
@@ -216,8 +363,9 @@ export async function POST(req: Request) {
     await orderRef.update({ razorpayOrderId: rzpOrder.id });
 
     return NextResponse.json({
+      checkoutType: "standard",
       orderId: docId,
-      displayOrderId: orderId,
+      displayOrderId,
       razorpayOrderId: rzpOrder.id,
       amount: rzpOrder.amount, // paise
     });

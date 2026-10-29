@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
-import { CartItem, readCart, clearCart, cartSubtotal } from '@/app/lib/cart';
+import { CartItem, clearCart, cartSubtotal, subscribeCart, getCartSnapshot, parseCartSnapshot } from '@/app/lib/cart';
 import { formatAuthors } from '@/app/lib/authors';
 import { client } from '@/app/sanityClient';
 import { calculateShipping, PACKAGING_WEIGHT_GRAMS } from '@/app/lib/shipping';
@@ -12,6 +13,9 @@ import { ShoppingBag, Download, MessageCircle, Home, Package, AlertCircle, Check
 import PayButton from '@/app/components/PayButton';
 
 const WHATSAPP_NUMBER = '919810173618';
+// Primary payment flow: Razorpay Magic Checkout (Indian orders only). When the
+// flag is off, or the order is international, the standard form below is used.
+const MAGIC_CHECKOUT = process.env.NEXT_PUBLIC_RAZORPAY_MAGIC_CHECKOUT === 'true';
 const COUNTRIES = [
   'India',
   'Pakistan', 'Bangladesh', 'Nepal', 'Sri Lanka', 'Bhutan',
@@ -32,13 +36,19 @@ export default function CheckoutPage() {
   const { user, loading: authLoading } = useAuth();
   const { discountRate } = useUserProfile();
 
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [enriched, setEnriched] = useState<EnrichedItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Cart lives in localStorage; read it as an external store (empty on the server).
+  const cartSnapshot = useSyncExternalStore(subscribeCart, getCartSnapshot, () => '');
+  const cart: CartItem[] = useMemo(() => parseCartSnapshot(cartSnapshot), [cartSnapshot]);
+  const [fetchedItems, setEnriched] = useState<EnrichedItem[]>([]);
+  // An empty cart has nothing to enrich — derive that instead of resetting state.
+  const enriched = useMemo(() => (cart.length === 0 ? [] : fetchedItems), [cart, fetchedItems]);
 
-  const [customerName, setCustomerName] = useState('');
+  // Name/email default to the signed-in user's; typing overrides them.
+  const [nameInput, setCustomerName] = useState<string | null>(null);
+  const [emailInput, setCustomerEmail] = useState<string | null>(null);
+  const customerName = nameInput ?? user?.displayName ?? '';
+  const customerEmail = emailInput ?? user?.email ?? '';
   const [customerPhone, setCustomerPhone] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
   const [city, setCity] = useState('');
@@ -51,29 +61,26 @@ export default function CheckoutPage() {
   const [orderComplete, setOrderComplete] = useState(false);
   const [generatedOrderId, setGeneratedOrderId] = useState('');
   const [paidAmount, setPaidAmount] = useState(0);
+  // The cart is cleared on payment, so keep what the invoice needs.
+  const [invoice, setInvoice] = useState<{
+    cart: CartItem[]; subtotal: number; discountAmount: number;
+    postageCost: number; handlingCharge: number; totalWeight: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
     else if (user) {
-      setCustomerName(user.displayName || '');
-      setCustomerEmail(user.email || '');
       // Get a fresh Firebase ID token for the checkout API call.
       user.getIdToken().then(setIdToken).catch(() => setIdToken(''));
     }
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    if (authLoading) return;
-    setCart(readCart());
-    setLoading(false);
-  }, [user, authLoading]);
-
-  useEffect(() => {
-    if (cart.length === 0) { setEnriched([]); return; }
+    if (cart.length === 0) return;
     (async () => {
       try {
         const ids = cart.map(i => i.id);
-        const books: any[] = await client.fetch(
+        const books: { _id: string; weightGrams?: number | null; price?: number; originalPrice?: number }[] = await client.fetch(
           `*[_type == "book" && _id in $ids]{ _id, weightGrams, price, originalPrice }`,
           { ids }
         );
@@ -110,8 +117,13 @@ const shipping = useMemo(() => calculateShipping(
     [subtotal, discountAmount, shippingCost]
   );
 
+  const magicMode = MAGIC_CHECKOUT && country === 'India';
+  // Fields Razorpay collects itself in Magic mode are optional here (they're
+  // only needed if the customer falls back to standard checkout).
+  const req = magicMode ? '' : ' *';
+
   const handleDownloadInvoice = () => {
-    if (!generatedOrderId) return;
+    if (!generatedOrderId || !invoice) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
@@ -160,11 +172,11 @@ const shipping = useMemo(() => calculateShipping(
     ${customerEmail ? `<div>${customerEmail}</div>` : ''}
   </div>
 
-  <div class="section">
+  ${addressLine1 ? `<div class="section">
     <h3>Shipping Address</h3>
     <div>${addressLine1}${addressLine2 ? ', ' + addressLine2 : ''}</div>
     <div>${city}${state ? ', ' + state : ''} ${postalCode}</div>
-  </div>
+  </div>` : ''}
 
   <table>
     <thead>
@@ -176,7 +188,7 @@ const shipping = useMemo(() => calculateShipping(
       </tr>
     </thead>
     <tbody>
-      ${cart.map(item => `
+      ${invoice.cart.map(item => `
         <tr>
           <td><strong>${item.title}</strong>${item.authors.length ? `<br/><small style="color:#666">${formatAuthors(item.authors)}</small>` : ''}</td>
           <td class="text-right">₹${item.price}</td>
@@ -188,10 +200,10 @@ const shipping = useMemo(() => calculateShipping(
   </table>
 
   <div class="totals">
-    <div class="totals-row"><span>Subtotal</span><span>₹${subtotal}</span></div>
-    ${discountAmount > 0 ? `<div class="totals-row" style="color:#7d5a34"><span>Discount (${discountRate}%)</span><span>-₹${discountAmount}</span></div>` : ''}
-    <div class="totals-row"><span>Shipping (India Post — Gyan Post, ${shipping.totalWeight}g)</span><span>₹${postageCost}</span></div>
-    <div class="totals-row"><span>Handling &amp; Packaging</span><span>₹${handlingCharge}</span></div>
+    <div class="totals-row"><span>Subtotal</span><span>₹${invoice.subtotal}</span></div>
+    ${invoice.discountAmount > 0 ? `<div class="totals-row" style="color:#7d5a34"><span>Discount (${discountRate}%)</span><span>-₹${invoice.discountAmount}</span></div>` : ''}
+    <div class="totals-row"><span>Shipping (India Post — Gyan Post, ${invoice.totalWeight}g)</span><span>₹${invoice.postageCost}</span></div>
+    <div class="totals-row"><span>Handling &amp; Packaging</span><span>₹${invoice.handlingCharge}</span></div>
     <div class="totals-row final"><span>Total Paid</span><span>₹${paidAmount}</span></div>
   </div>
 
@@ -216,11 +228,12 @@ const shipping = useMemo(() => calculateShipping(
   const handlePaid = (orderId: string) => {
     setGeneratedOrderId(orderId);
     setPaidAmount(estimatedTotal);
+    setInvoice({ cart, subtotal, discountAmount, postageCost, handlingCharge, totalWeight: shipping.totalWeight });
     setOrderComplete(true);
     clearCart();
   };
 
-  if (loading || authLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[#FBFBFA] flex items-center justify-center font-sans">
         <p className="text-xs uppercase tracking-widest text-[#1A1A1A]/40 animate-pulse">Preparing checkout…</p>
@@ -292,21 +305,27 @@ const shipping = useMemo(() => calculateShipping(
             <h2 className="font-serif text-3xl font-normal mb-1">Complete Your Order</h2>
             <p className="text-xs text-[#1A1A1A]/60 tracking-widest uppercase mb-8">Pay securely — order confirmed instantly</p>
 
+            {magicMode && cart.length > 0 && (
+              <p className="text-[11px] text-[#1A1A1A]/60 bg-[#7D5A34]/5 border border-[#7D5A34]/20 p-3 rounded-sm leading-relaxed mb-5">
+                Pay with Razorpay Magic Checkout — your saved addresses, coupons and delivery are handled securely in the next step, so the details below are optional. They are only used if you choose standard checkout.
+              </p>
+            )}
+
             {cart.length === 0 ? (
               <div className="border border-dashed border-[#1A1A1A]/10 bg-white p-12 text-center rounded-sm">
                 <p className="text-xs italic text-[#1A1A1A]/50 mb-3">Your cart is empty.</p>
-                <a href="/books" className="text-[10px] font-bold uppercase tracking-widest text-[#7D5A34] hover:underline">Browse catalog →</a>
+                <Link href="/books" className="text-[10px] font-bold uppercase tracking-widest text-[#7D5A34] hover:underline">Browse catalog →</Link>
               </div>
             ) : (
               <div className="space-y-5">
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">Full Name *</label>
-                  <input required value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none rounded-sm" />
+                  <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">Full Name{req}</label>
+                  <input required={!magicMode} value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none rounded-sm" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">Phone *</label>
-                    <input type="tel" required value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="+91" className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none rounded-sm" />
+                    <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">Phone{req}</label>
+                    <input type="tel" required={!magicMode} value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="+91" className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none rounded-sm" />
                   </div>
                   <div>
                     <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">Email</label>
@@ -314,8 +333,8 @@ const shipping = useMemo(() => calculateShipping(
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">Address Line 1 *</label>
-                  <input required value={addressLine1} onChange={e => setAddressLine1(e.target.value)} className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none rounded-sm" />
+                  <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">Address Line 1{req}</label>
+                  <input required={!magicMode} value={addressLine1} onChange={e => setAddressLine1(e.target.value)} className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none rounded-sm" />
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">Address Line 2</label>
@@ -323,16 +342,16 @@ const shipping = useMemo(() => calculateShipping(
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">City *</label>
-                    <input required value={city} onChange={e => setCity(e.target.value)} className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none rounded-sm" />
+                    <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">City{req}</label>
+                    <input required={!magicMode} value={city} onChange={e => setCity(e.target.value)} className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none rounded-sm" />
                   </div>
                   <div>
                     <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">State</label>
                     <input value={state} onChange={e => setState(e.target.value)} className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none rounded-sm" />
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">PIN Code *</label>
-                    <input required value={postalCode} onChange={e => setPostalCode(e.target.value)} className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none rounded-sm" />
+                    <label className="block text-[10px] uppercase tracking-widest font-bold mb-2">PIN Code{req}</label>
+                    <input required={!magicMode} value={postalCode} onChange={e => setPostalCode(e.target.value)} className="w-full bg-white border border-[#1A1A1A]/15 p-3 text-xs outline-none rounded-sm" />
                   </div>
                 </div>
                 <div>
@@ -357,6 +376,7 @@ const shipping = useMemo(() => calculateShipping(
                   user={{ name: user?.displayName || '', email: user?.email || '' }}
                   idToken={idToken}
                   totalRupees={estimatedTotal}
+                  magicMode={magicMode}
                   disabled={shipping.requiresQuote || !idToken}
                   onPaid={handlePaid}
                 />
