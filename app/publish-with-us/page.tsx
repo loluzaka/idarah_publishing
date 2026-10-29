@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import React, { useState } from 'react';
 
 export default function Submissions() {
@@ -22,7 +23,7 @@ export default function Submissions() {
             </h1>
           </div>
           <nav className="flex items-center gap-8 font-sans text-xs tracking-widest uppercase font-medium">
-            <a href="/" className="hover:text-[#7D5A34] transition-colors">Home/Store</a>
+            <Link href="/" className="hover:text-[#7D5A34] transition-colors">Home/Store</Link>
             <a href="/submissions" className="hover:text-[#7D5A34] transition-colors border-b border-[#1A1A1A]">Submissions</a>
           </nav>
         </div>

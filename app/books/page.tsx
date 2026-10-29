@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, useSyncExternalStore } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Fuse from 'fuse.js';
@@ -8,19 +8,21 @@ import { client, urlFor } from '../sanityClient';
 
 const BookModal = dynamic(() => import('../components/BookModal'), { ssr: false });
 import { addRecentSearch, getRecentSearches, clearRecentSearches } from '../lib/recommendations';
-import { CartItem, readCart, writeCart, clearCart as clearCartStorage } from '../lib/cart';
+import { CartItem, writeCart, clearCart as clearCartStorage } from '../lib/cart';
+import { useCart } from '../hooks/useCart';
 import { stackedAuthors, stackedShortAuthors } from '../lib/authors';
 import { buildFuseIndex, fuseSearch, SearchableBook } from '../lib/search';
-import { Library, Search, ClipboardList, MessageCircle, Truck, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Library, Search, ClipboardList, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { customerPrice } from '../lib/pricing';
+import type { SanityImage, CategoryRef } from '../lib/sanity-types';
 import { isPurchasable } from '../lib/stock';
 
 interface Category {
   _id: string;
   title: string;
   slug: { current: string };
-  bannerImage?: any;
+  bannerImage?: SanityImage;
 }
 
 interface Book {
@@ -28,23 +30,28 @@ interface Book {
   title: string;
   authors?: string[] | null;
   authorShorts?: (string | null)[];
-  isbn?: string;
   series?: string;
   publisher?: string;
   language?: string;
   price: number;
   originalPrice?: number;
   stock?: number;
-  categories?: any[];
+  categories?: CategoryRef[];
   coverPlaceholder?: string;
-  coverImage?: any;
+  coverImage?: SanityImage;
 }
 
 interface Theme {
   category: Category;
   books: Book[];
   anchor: string;
-  coverImage?: any;
+  coverImage?: SanityImage | null;
+}
+
+// useSyncExternalStore subscription for the address bar (back/forward navigation).
+function subscribeUrl(onChange: () => void) {
+  window.addEventListener('popstate', onChange);
+  return () => window.removeEventListener('popstate', onChange);
 }
 
 function themeAnchorId(slug: string) {
@@ -64,10 +71,17 @@ export default function BooksPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [bookCollectionMap, setBookCollectionMap] = useState<Map<string, string[]>>(new Map());
 
-  const [searchQuery, setSearchQuery] = useState('');
+  // The ?q= in the URL seeds the search box; once the user types, their text wins.
+  const urlQuery = useSyncExternalStore(
+    subscribeUrl,
+    () => new URLSearchParams(window.location.search).get('q') ?? '',
+    () => ''
+  );
+  const [typedQuery, setSearchQuery] = useState<string | null>(null);
+  const searchQuery = typedQuery ?? urlQuery;
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const { cart, setCart } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCartMaximized, setIsCartMaximized] = useState(false);
 
@@ -82,8 +96,6 @@ export default function BooksPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const p = new URLSearchParams(window.location.search);
-    const q = p.get('q');
-    if (q) setSearchQuery(q);
     if (p.get('focus') === 'search') {
       setTimeout(() => {
         searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -97,7 +109,7 @@ export default function BooksPage() {
     const p = new URLSearchParams();
     if (searchQuery.trim()) p.set('q', searchQuery.trim());
     const qs = p.toString();
-    router.replace(qs ? `/books?${qs}` : '/books', { scroll: false } as any);
+    router.replace(qs ? `/books?${qs}` : '/books', { scroll: false });
   }, [searchQuery, router]);
 
   useEffect(() => {
@@ -107,11 +119,12 @@ export default function BooksPage() {
 
   // Fetch data
   useEffect(() => {
-    const localCart = localStorage.getItem('iad_cart');
-    if (localCart) {
-      try { setCart(readCart()); setIsCartOpen(true); } catch {}
-    }
-    setRecentSearches(getRecentSearches());
+    // Restore client-only state right after mount (deferred so it isn't a
+    // synchronous setState inside the effect body).
+    const restore = setTimeout(() => {
+      if (localStorage.getItem('iad_cart')) setIsCartOpen(true);
+      setRecentSearches(getRecentSearches());
+    }, 0);
 
     const fetchData = async () => {
       try {
@@ -123,7 +136,6 @@ export default function BooksPage() {
             price,
             originalPrice,
             stock,
-            isbn,
             series,
             publisher,
             language,
@@ -166,7 +178,10 @@ export default function BooksPage() {
       if (detail?.bookId) setSelectedBookId(detail.bookId);
     };
     window.addEventListener('openBookModal', handleOpenBook);
-    return () => window.removeEventListener('openBookModal', handleOpenBook);
+    return () => {
+      clearTimeout(restore);
+      window.removeEventListener('openBookModal', handleOpenBook);
+    };
   }, []);
 
   // Fuse index for search
@@ -175,9 +190,9 @@ export default function BooksPage() {
     const searchable: SearchableBook[] = books.map(b => ({
       ...b,
       collectionTitles: bookCollectionMap.get(b._id) ?? [],
-      categories: (b.categories ?? []).map((c: any) => ({
+      categories: (b.categories ?? []).map((c) => ({
         title: c?.title ?? '',
-        slug: c?.slug ?? '',
+        slug: typeof c?.slug === 'string' ? c.slug : c?.slug?.current ?? '',
       })),
     }));
     return buildFuseIndex(searchable);
@@ -193,7 +208,7 @@ export default function BooksPage() {
       // Skip meta categories used for badging in book cards
       if (slug === 'new-arrivals' || slug === 'bestsellers') continue;
       const themeBooks = books.filter(b =>
-        b.categories?.some((c: any) => c?.slug === slug || c?._id === cat._id)
+        b.categories?.some((c) => c?.slug === slug || c?._id === cat._id)
       );
       if (themeBooks.length === 0) continue;
       // Use the category's own bannerImage (uploaded in Sanity Studio)
@@ -219,7 +234,7 @@ export default function BooksPage() {
   const isSearching = searchQuery.trim() !== '';
 
   const featuredBooks = useMemo(
-    () => books.filter(b => b.categories?.some((c: any) => c?.slug === 'new-arrivals')),
+    () => books.filter(b => b.categories?.some((c) => c?.slug === 'new-arrivals')),
     [books]
   );
 
@@ -302,13 +317,12 @@ export default function BooksPage() {
             ) : (
               <span className="text-4xl opacity-20 font-bold">{book.coverPlaceholder || 'IAD'}</span>
             )}
-            {book.categories?.some((c: any) => c?.slug === 'new-arrivals') && (
+            {book.categories?.some((c) => c?.slug === 'new-arrivals') && (
               <span className="absolute top-2 left-2 font-sans text-[8px] font-bold uppercase tracking-wider bg-white/95 text-[#7D5A34] border border-[#7D5A34]/20 px-1.5 py-0.5 rounded shadow-xs">New</span>
             )}
           </div>
           <h4 className="text-base font-bold leading-snug group-hover:text-[#7D5A34] transition-colors">{book.title}</h4>
           <p className="font-sans text-[11px] text-[#1A1A1A]/55 mt-1 whitespace-pre-line leading-snug line-clamp-2">{stackedShortAuthors(book.authors, book.authorShorts, 'Unknown Author')}</p>
-          {book.isbn && <p className="font-mono text-[8px] text-[#1A1A1A]/40 mt-1.5 uppercase">ISBN: {book.isbn}</p>}
           {book.language && <p className="font-sans text-[8px] text-[#1A1A1A]/40 mt-0.5 uppercase tracking-wider">{book.language}</p>}
         </button>
         <div className="border-t border-[#1A1A1A]/10 pt-3 mt-4 flex items-center justify-between">
@@ -362,7 +376,7 @@ export default function BooksPage() {
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Search by title, author, subject, ISBN, or language..."
+                  placeholder="Search by title, author, subject, or language..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') commitSearch(searchQuery); }}
@@ -470,7 +484,6 @@ export default function BooksPage() {
                             ) : deskBooks.map((book, i) => {
                               const SPINE_WIDTH = 18;         // px — depth/thickness of the book
                               const BOOK_WIDTH_MD = 148;
-                              const BOOK_WIDTH_SM = 118;
                               const restRotateY = 32;         // resting turn — spine visible on left
                               const restTiltZ = [-4, 0, 3];   // gentle stagger
                               const overlap = 78;             // px each subsequent book intrudes
@@ -681,7 +694,7 @@ Discover works in our {activeTheme.category.title} collection. Click on any cove
                   <p className="font-sans text-xs text-[#1A1A1A]/40 italic">No publications available yet.</p>
                 </div>
               ) : (
-                themes.map((theme, i) => (
+                themes.map((theme) => (
                   <section
                     key={theme.category._id}
                     id={theme.anchor}

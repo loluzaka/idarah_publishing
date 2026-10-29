@@ -3,6 +3,7 @@
 // Catches runtime errors thrown by any route segment below the root layout.
 // This is a Client Component — Next.js requires it.
 
+import Link from 'next/link';
 import { useEffect } from 'react';
 import { AlertTriangle, RotateCcw, Home } from 'lucide-react';
 
@@ -49,12 +50,12 @@ export default function Error({
           >
             <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} /> Try Again
           </button>
-          <a
+          <Link
             href="/"
             className="flex items-center justify-center gap-2 font-sans text-[11px] font-bold uppercase tracking-widest border border-[#1A1A1A]/20 px-6 py-3 hover:bg-[#1A1A1A]/5 transition-colors"
           >
             <Home className="w-3.5 h-3.5" strokeWidth={2} /> Go Home
-          </a>
+          </Link>
         </div>
       </div>
     </div>

@@ -18,50 +18,62 @@ interface PendingReview {
   bookTitle?: string;
 }
 
+type ReviewFilter = 'pending' | 'approved' | 'rejected';
+
+async function fetchReviews(filter: ReviewFilter): Promise<PendingReview[]> {
+  try {
+    const q = query(collectionGroup(db, 'entries'), where('status', '==', filter));
+    const snap = await getDocs(q);
+    const raw: PendingReview[] = snap.docs.map(d => {
+      const data = d.data();
+      const ts = data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : undefined;
+      return {
+        bookId: data.bookId ?? d.ref.parent.parent?.id ?? '',
+        userId: d.id,
+        userDisplayName: data.userDisplayName ?? undefined,
+        rating: Number(data.rating) || 0,
+        title: data.title ?? undefined,
+        body: data.body ?? undefined,
+        status: data.status,
+        createdAt: ts,
+      };
+    });
+
+    // Enrich with book title
+    const bookIds = [...new Set(raw.map(r => r.bookId).filter(Boolean))];
+    if (bookIds.length > 0) {
+      const books: { _id: string; title: string }[] = await client.fetch(`*[_type == "book" && _id in $ids]{ _id, title }`, { ids: bookIds });
+      const map = new Map(books.map((b) => [b._id, b.title]));
+      raw.forEach(r => { r.bookTitle = map.get(r.bookId) as string | undefined; });
+    }
+
+    raw.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    return raw;
+  } catch (err) {
+    console.error('Failed to load reviews (Firestore may need composite index):', err);
+    return [];
+  }
+}
+
 export default function AdminReviewsPage() {
-  const [reviews, setReviews] = useState<PendingReview[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [filter, setFilter] = useState<ReviewFilter>('pending');
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const q = query(collectionGroup(db, 'entries'), where('status', '==', filter));
-      const snap = await getDocs(q);
-      const raw: PendingReview[] = snap.docs.map(d => {
-        const data = d.data() as any;
-        const ts = data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : undefined;
-        return {
-          bookId: data.bookId ?? d.ref.parent.parent?.id ?? '',
-          userId: d.id,
-          userDisplayName: data.userDisplayName ?? undefined,
-          rating: Number(data.rating) || 0,
-          title: data.title ?? undefined,
-          body: data.body ?? undefined,
-          status: data.status,
-          createdAt: ts,
-        };
-      });
+  // Results are tagged with the filter they were fetched for, so "loading" is
+  // simply "we don't have results for the current filter yet".
+  const [result, setResult] = useState<{ filter: ReviewFilter; reviews: PendingReview[] } | null>(null);
+  const loading = result?.filter !== filter;
+  const reviews = result && !loading ? result.reviews : [];
+  const setReviews = (update: (prev: PendingReview[]) => PendingReview[]) =>
+    setResult(r => (r ? { ...r, reviews: update(r.reviews) } : r));
 
-      // Enrich with book title
-      const bookIds = [...new Set(raw.map(r => r.bookId).filter(Boolean))];
-      if (bookIds.length > 0) {
-        const books = await client.fetch(`*[_type == "book" && _id in $ids]{ _id, title }`, { ids: bookIds });
-        const map = new Map(books.map((b: any) => [b._id, b.title]));
-        raw.forEach(r => { r.bookTitle = map.get(r.bookId) as string | undefined; });
-      }
-
-      raw.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-      setReviews(raw);
-    } catch (err) {
-      console.error('Failed to load reviews (Firestore may need composite index):', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, [filter]);
+  useEffect(() => {
+    let cancelled = false;
+    fetchReviews(filter).then(list => {
+      if (!cancelled) setResult({ filter, reviews: list });
+    });
+    return () => { cancelled = true; };
+  }, [filter]);
 
   const updateStatus = async (r: PendingReview, status: 'approved' | 'rejected') => {
     if (!r.bookId || !r.userId) return;

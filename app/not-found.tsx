@@ -19,11 +19,11 @@ export default function NotFound() {
         </span>
 
         <h1 className="text-4xl md:text-5xl font-normal tracking-tight mb-4 leading-tight">
-          This page doesn't exist
+          This page doesn&apos;t exist
         </h1>
 
         <p className="font-sans text-sm text-[#1A1A1A]/60 mb-10 leading-relaxed max-w-sm mx-auto">
-          The page you're looking for may have been moved, renamed, or never existed. Try browsing our catalog instead.
+          The page you&apos;re looking for may have been moved, renamed, or never existed. Try browsing our catalog instead.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">

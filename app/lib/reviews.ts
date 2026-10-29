@@ -13,6 +13,7 @@ import {
   serverTimestamp,
   where,
   Timestamp,
+  type DocumentSnapshot,
 } from 'firebase/firestore';
 
 export type ReviewStatus = 'pending' | 'approved' | 'rejected';
@@ -40,7 +41,7 @@ function entriesCol(bookId: string) {
   return collection(db, 'reviews', bookId, 'entries');
 }
 
-function docToReview(d: any, fallbackBookId?: string): Review {
+function docToReview(d: DocumentSnapshot, fallbackBookId?: string): Review {
   const data = d.data() ?? {};
   return {
     bookId: data.bookId ?? fallbackBookId ?? '',
@@ -122,9 +123,9 @@ export async function submitReview(
       { merge: true }
     );
     return { ok: true };
-  } catch (err: any) {
+  } catch (err) {
     console.warn('Failed to submit review:', err);
-    return { ok: false, error: err?.message || 'Could not save your review right now.' };
+    return { ok: false, error: (err instanceof Error && err.message) || 'Could not save your review right now.' };
   }
 }
 

@@ -85,7 +85,6 @@ interface BookLD {
   _id: string;
   title: string;
   authors?: string[] | null;
-  isbn?: string | null;
   description?: string | null;
   publisher?: string | null;
   language?: string | null;
@@ -110,7 +109,6 @@ export function bookJsonLd(book: BookLD) {
     '@id': book.url ?? `${SITE.url}/books#${book._id}`,
     name: book.title,
     ...(authors.length ? { author: authors.map(name => ({ '@type': 'Person', name })) } : {}),
-    ...(book.isbn ? { isbn: book.isbn } : {}),
     ...(book.description ? { description: book.description.slice(0, 500) } : {}),
     ...(book.publisher ? { publisher: { '@type': 'Organization', name: book.publisher } } : { publisher: { '@type': 'Organization', name: SITE.publisher } }),
     ...(book.language ? { inLanguage: book.language } : {}),

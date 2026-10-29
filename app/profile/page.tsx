@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
@@ -12,6 +13,8 @@ import { getUserOrders, STATUS_LABELS, Order } from '@/app/lib/orders';
 import { isAdmin } from '@/app/lib/admin';
 import { useUserProfile } from '@/app/hooks/useUserProfile';
 import { ACCOUNT_TYPES } from '@/app/lib/userProfile';
+import type { SanityImage } from '@/app/lib/sanity-types';
+import type { LucideIcon } from 'lucide-react';
 import {
   User as UserIcon,
   Package,
@@ -28,7 +31,7 @@ import {
 
 type TabId = 'orders' | 'wishlist' | 'recent' | 'addresses' | 'account';
 
-const TABS: { id: TabId; label: string; Icon: any }[] = [
+const TABS: { id: TabId; label: string; Icon: LucideIcon }[] = [
   { id: 'orders',    label: 'Orders',           Icon: Package },
   { id: 'wishlist',  label: 'Wishlist',         Icon: Heart },
   { id: 'recent',    label: 'Recently Viewed',  Icon: Clock },
@@ -36,14 +39,14 @@ const TABS: { id: TabId; label: string; Icon: any }[] = [
   { id: 'account',   label: 'Account',          Icon: Settings },
 ];
 
-interface BookLite { _id: string; title: string; authors?: string[]; authorShorts?: (string | null)[]; price: number; coverImage?: any; }
+interface BookLite { _id: string; title: string; authors?: string[]; authorShorts?: (string | null)[]; price: number; coverImage?: SanityImage; }
 
 export default function ProfilePage() {
   const { user, loading: authLoading, logout } = useAuth();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<TabId>('orders');
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [wishlistBooks, setWishlistBooks] = useState<BookLite[]>([]);
   const [recentBooks, setRecentBooks] = useState<BookLite[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -274,7 +277,7 @@ export default function ProfilePage() {
                 ) : wishlistBooks.length === 0 ? (
                   <div className="border border-dashed border-[#1A1A1A]/10 bg-white p-12 text-center rounded-sm">
                     <p className="text-xs italic text-[#1A1A1A]/50 mb-3">Your wishlist is empty.</p>
-                    <a href="/books" className="text-[10px] font-bold uppercase tracking-widest text-[#7D5A34] hover:underline">Discover books →</a>
+                    <Link href="/books" className="text-[10px] font-bold uppercase tracking-widest text-[#7D5A34] hover:underline">Discover books →</Link>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">

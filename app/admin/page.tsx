@@ -3,15 +3,17 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { client } from '@/app/sanityClient';
-import { LayoutDashboard, Package, MessageSquare, IndianRupee, BookOpen, AlertCircle, Clock } from 'lucide-react';
+import { LayoutDashboard, Package, MessageSquare, IndianRupee, BookOpen, AlertCircle, Clock, type LucideIcon } from 'lucide-react';
 import { db } from '@/app/lib/firebase';
 import { collectionGroup, getDocs, query, where } from 'firebase/firestore';
 
-interface Stat { label: string; value: string | number; Icon: any; hint?: string; }
+interface Stat { label: string; value: string | number; Icon: LucideIcon; hint?: string; }
+
+interface RecentOrder { orderId: string; customerName?: string; status?: string; totalAmount?: number; }
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<{ orders: number; pendingOrders: number; pendingReviews: number; revenue: number; totalBooks: number; outOfStock: number } | null>(null);
-  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

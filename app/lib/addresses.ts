@@ -55,8 +55,8 @@ export async function saveAddress(uid: string, address: Address): Promise<{ ok: 
     };
     await setDoc(ref, payload, { merge: true });
     return { ok: true, id };
-  } catch (err: any) {
-    return { ok: false, error: err?.message || 'Could not save address.' };
+  } catch (err) {
+    return { ok: false, error: (err instanceof Error && err.message) || 'Could not save address.' };
   }
 }
 

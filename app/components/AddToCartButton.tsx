@@ -17,10 +17,10 @@ export default function AddToCartButton({ bookId }: AddToCartButtonProps) {
   const handleAddToCart = () => {
     const activeKey = `iad_cart_${user.uid}`;
     const currentCartRaw = localStorage.getItem(activeKey);
-    let currentCart = currentCartRaw ? JSON.parse(currentCartRaw) : [];
+    const currentCart: { id: string; quantity: number }[] = currentCartRaw ? JSON.parse(currentCartRaw) : [];
     
     // Explicitly targeting item.id to sync with Sanity lookup parameters
-    const existingItem = currentCart.find((item: any) => item.id === bookId);
+    const existingItem = currentCart.find((item) => item.id === bookId);
     if (existingItem) {
       existingItem.quantity += 1;
     } else {

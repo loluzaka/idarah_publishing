@@ -9,26 +9,22 @@ import { getUserProfile, UserProfile } from '@/app/lib/userProfile';
 
 export function useUserProfile() {
   const { user, loading: authLoading } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const uid = user?.uid;
+  // Tagged with the uid it was fetched for, so switching/clearing the user
+  // never shows (or waits on) a previous user's profile.
+  const [fetched, setFetched] = useState<{ uid: string; profile: UserProfile | null } | null>(null);
 
   useEffect(() => {
+    if (authLoading || !uid) return;
     let cancelled = false;
-    if (authLoading) return;
-    if (!user) {
-      setProfile(null);
-      setLoading(false);
-      return;
-    }
-    (async () => {
-      const p = await getUserProfile(user.uid);
-      if (!cancelled) {
-        setProfile(p);
-        setLoading(false);
-      }
-    })();
+    getUserProfile(uid).then(p => {
+      if (!cancelled) setFetched({ uid, profile: p });
+    });
     return () => { cancelled = true; };
-  }, [user?.uid, authLoading]);
+  }, [uid, authLoading]);
+
+  const profile = uid && fetched?.uid === uid ? fetched.profile : null;
+  const loading = authLoading || (!!uid && fetched?.uid !== uid);
 
   return {
     profile,

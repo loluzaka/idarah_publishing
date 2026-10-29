@@ -1,10 +1,12 @@
 "use client";
 
+import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { client, urlFor } from '../../sanityClient';
 import { stackedAuthors } from '../../lib/authors';
 import { readCart, writeCart } from '../../lib/cart';
+import type { SanityImage } from '../../lib/sanity-types';
 
 interface Book {
   _id: string;
@@ -19,7 +21,7 @@ interface Book {
   year?: string;
   category?: { title: string };
   coverPlaceholder?: string;
-  coverImage?: any;
+  coverImage?: SanityImage;
 }
 
 export default function BookDetailPage() {
@@ -80,9 +82,9 @@ export default function BookDetailPage() {
       <div className="min-h-screen bg-[#FBFBFA] flex flex-col items-center justify-center font-serif text-center p-6">
         <h2 className="text-2xl font-bold mb-2">Volume Archive Not Found</h2>
         <p className="font-sans text-xs text-[#1A1A1A]/50 mb-6">The requested publication index record does not exist in the collection files.</p>
-        <a href="/books" className="font-sans text-xs font-bold uppercase tracking-widest border border-[#1A1A1A] px-4 py-2 hover:bg-[#1A1A1A] hover:text-[#FBFBFA] transition-all">
+        <Link href="/books" className="font-sans text-xs font-bold uppercase tracking-widest border border-[#1A1A1A] px-4 py-2 hover:bg-[#1A1A1A] hover:text-[#FBFBFA] transition-all">
           Return to Archive
-        </a>
+        </Link>
       </div>
     );
   }
@@ -93,9 +95,9 @@ export default function BookDetailPage() {
         
         {/* BACK NAV BAR */}
         <div className="mb-8">
-          <a href="/books" className="font-sans text-[11px] font-bold uppercase tracking-wider text-[#1A1A1A]/60 hover:text-[#1A1A1A] transition-colors inline-flex items-center gap-2">
+          <Link href="/books" className="font-sans text-[11px] font-bold uppercase tracking-wider text-[#1A1A1A]/60 hover:text-[#1A1A1A] transition-colors inline-flex items-center gap-2">
             ← Back to Publications Archive
-          </a>
+          </Link>
         </div>
 
         {/* TWO COLUMN GRID PROFILE */}

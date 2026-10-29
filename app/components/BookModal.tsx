@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { client, urlFor } from '@/app/sanityClient';
+import type { SanityImage } from '@/app/lib/sanity-types';
 import { addRecentlyViewedBook } from '@/app/lib/recommendations';
 import { useAuth } from '@/app/context/AuthContext';
 import { addToWishlist, removeFromWishlist, isWishlisted } from '@/app/lib/wishlist';
@@ -11,6 +12,7 @@ import { bookJsonLd, jsonLdString } from '@/app/lib/seo';
 import { useUserProfile } from '@/app/hooks/useUserProfile';
 import { customerPrice } from '@/app/lib/pricing';
 import { stackedAuthors, stackedShortAuthors } from '@/app/lib/authors';
+import ZoomableImage from '@/app/components/ZoomableImage';
 
 interface Category {
   title: string;
@@ -22,7 +24,6 @@ interface BookDetail {
   title: string;
   authors: string[];
   authorIds?: string[];
-  isbn?: string;
   series?: string;
   publisher?: string;
   year?: string;
@@ -32,11 +33,11 @@ interface BookDetail {
   originalPrice?: number;
   stock?: number;
   description?: string;
-  coverImage?: any;
+  coverImage?: SanityImage;
   coverPlaceholder?: string;
   categories?: Category[];
-  contentsImages?: any[];
-  previewImages?: any[];
+  contentsImages?: SanityImage[];
+  previewImages?: SanityImage[];
 }
 
 interface RelatedBook {
@@ -45,7 +46,7 @@ interface RelatedBook {
   authors: string[];
   authorShorts?: (string | null)[];
   price: number;
-  coverImage?: any;
+  coverImage?: SanityImage;
 }
 
 interface BookModalProps {
@@ -108,7 +109,6 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
   const [activeTab, setActiveTab] = React.useState<'contents' | 'preview'>('contents');
   const [activePreviewIndex, setActivePreviewIndex] = React.useState<number>(0);
   const [activeViewportImageUrl, setActiveViewportImageUrl] = React.useState<string | null>(null);
-  const [zoomScale, setZoomScale] = React.useState<boolean>(false);
 
   // Wishlist
   const [wishlisted, setWishlisted] = React.useState(false);
@@ -128,7 +128,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
   const [reviewError, setReviewError] = React.useState<string | null>(null);
   const [reviewSuccess, setReviewSuccess] = React.useState(false);
 
-  const getImageUrl = (source: any, width?: number, height?: number): string | null => {
+  const getImageUrl = (source: SanityImage | null | undefined, width?: number, height?: number): string | null => {
     if (!source || !source.asset) return null;
     try {
       let b = urlFor(source);
@@ -189,7 +189,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
             const url = getImageUrl(data.coverImage);
             if (url) setActiveViewportImageUrl(url);
           } else if (data.contentsImages) {
-            const first = data.contentsImages.find((img: any) => img?.asset);
+            const first = data.contentsImages.find((img) => img?.asset);
             if (first) {
               const url = getImageUrl(first);
               if (url) setActiveViewportImageUrl(url);
@@ -197,7 +197,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
           }
 
           // Related books: share any contributor OR have overlapping categories.
-          const catSlugs = (data.categories ?? []).map((c: any) => c?.slug?.current ?? c?.slug ?? '').filter(Boolean);
+          const catSlugs = (data.categories ?? []).map((c) => c?.slug?.current ?? '').filter(Boolean);
           const relatedQuery = `*[_type == "book" && _id != $bookId && (
             count(authors[_ref in $authorIds]) > 0 ||
             count(categories[]->slug.current[@ in $catSlugs]) > 0
@@ -302,8 +302,8 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
 
   if (!book) return null;
 
-  const validContentsImages = (book.contentsImages || []).filter((img: any) => img?.asset);
-  const validPreviewImages = (book.previewImages || []).filter((img: any) => img?.asset);
+  const validContentsImages = (book.contentsImages || []).filter((img) => img?.asset);
+  const validPreviewImages = (book.previewImages || []).filter((img) => img?.asset);
   const hasContents = validContentsImages.length > 0;
   const hasPreview = validPreviewImages.length > 0;
   const priced = customerPrice(book.price, book.originalPrice, discountRate);
@@ -318,7 +318,6 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
       _id: book._id,
       title: book.title,
       authors: book.authors,
-      isbn: book.isbn,
       description: book.description,
       publisher: book.publisher,
       price: book.price,
@@ -374,7 +373,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                       <img src={getImageUrl(book.coverImage, 120) || ''} alt="Cover Miniature" className="w-full h-full object-cover" />
                     </button>
                   )}
-                  {hasContents && validContentsImages.map((img: any, idx: number) => {
+                  {hasContents && validContentsImages.map((img, idx: number) => {
                     const imgUrl = getImageUrl(img);
                     const thumbUrl = getImageUrl(img, 120);
                     if (!imgUrl || !thumbUrl) return null;
@@ -389,9 +388,11 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                     );
                   })}
                 </div>
-                <div className="flex-grow flex items-center justify-center relative bg-white border border-[#1A1A1A]/10 p-2 overflow-hidden h-full">
+                <div className="flex-grow flex items-center justify-center relative bg-white border border-[#1A1A1A]/10 p-2 overflow-hidden h-full min-h-[320px]">
                   {activeViewportImageUrl ? (
-                    <img src={activeViewportImageUrl} alt="Active Plate" className="max-h-full max-w-full object-contain shadow-sm" />
+                    <div className="absolute inset-2">
+                      <ZoomableImage key={activeViewportImageUrl} src={activeViewportImageUrl} alt="Active Plate" />
+                    </div>
                   ) : (
                     <span className="font-serif text-5xl opacity-20 font-bold">{book.coverPlaceholder || 'IAD'}</span>
                   )}
@@ -401,23 +402,19 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
 
             {activeTab === 'preview' && hasPreview && (
               <div className="w-full h-full flex flex-col justify-between items-center relative">
-                <div className="flex-grow flex items-center justify-center max-h-[70%] w-full relative">
-                  <img
-                    src={getImageUrl(validPreviewImages[activePreviewIndex], undefined, 600) || ''}
-                    alt={`Preview Page ${activePreviewIndex + 1}`}
-                    onClick={() => setZoomScale(p => !p)}
-                    className={`max-h-full object-contain cursor-zoom-in transition-transform duration-200 select-none ${zoomScale ? 'scale-150 z-20 shadow-2xl' : ''}`}
-                  />
-                  {zoomScale && (
-                    <div className="absolute bottom-2 bg-[#1A1A1A] text-[#FBFBFA] text-[9px] uppercase tracking-widest px-2 py-1 pointer-events-none">
-                      Click image to Zoom Out
-                    </div>
-                  )}
+                <div className="flex-grow min-h-[300px] w-full relative">
+                  <div className="absolute inset-0">
+                    <ZoomableImage
+                      key={activePreviewIndex}
+                      src={getImageUrl(validPreviewImages[activePreviewIndex], 1400) || ''}
+                      alt={`Preview Page ${activePreviewIndex + 1}`}
+                    />
+                  </div>
                 </div>
                 <div className="w-full flex items-center justify-between px-6 pt-4 border-t border-[#1A1A1A]/5">
-                  <button disabled={activePreviewIndex === 0} onClick={() => { setActivePreviewIndex(p => p - 1); setZoomScale(false); }} className="p-2 border border-[#1A1A1A]/10 hover:border-[#1A1A1A] text-xs font-bold font-sans tracking-widest uppercase disabled:opacity-30 disabled:pointer-events-none transition-all">← Prev</button>
+                  <button disabled={activePreviewIndex === 0} onClick={() => { setActivePreviewIndex(p => p - 1); }} className="p-2 border border-[#1A1A1A]/10 hover:border-[#1A1A1A] text-xs font-bold font-sans tracking-widest uppercase disabled:opacity-30 disabled:pointer-events-none transition-all">← Prev</button>
                   <span className="font-sans text-[11px] font-semibold text-[#1A1A1A]/60">{activePreviewIndex + 1} of {validPreviewImages.length} Pages</span>
-                  <button disabled={activePreviewIndex === validPreviewImages.length - 1} onClick={() => { setActivePreviewIndex(p => p + 1); setZoomScale(false); }} className="p-2 border border-[#1A1A1A]/10 hover:border-[#1A1A1A] text-xs font-bold font-sans tracking-widest uppercase disabled:opacity-30 disabled:pointer-events-none transition-all">Next →</button>
+                  <button disabled={activePreviewIndex === validPreviewImages.length - 1} onClick={() => { setActivePreviewIndex(p => p + 1); }} className="p-2 border border-[#1A1A1A]/10 hover:border-[#1A1A1A] text-xs font-bold font-sans tracking-widest uppercase disabled:opacity-30 disabled:pointer-events-none transition-all">Next →</button>
                 </div>
               </div>
             )}
@@ -524,10 +521,6 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
               <div>
                 <span className="font-sans text-[8px] uppercase tracking-widest text-[#1A1A1A]/40 block mb-0.5">Table of Contents</span>
                 <span className="font-sans text-[11px] font-bold text-[#1A1A1A]">{hasContents ? `${validContentsImages.length} Pages Available` : 'Legacy Standard Print'}</span>
-              </div>
-              <div>
-                <span className="font-sans text-[8px] uppercase tracking-widest text-[#1A1A1A]/40 block mb-0.5">ISBN</span>
-                <span className="font-mono text-[10px] font-bold text-[#1A1A1A]">{book.isbn || 'N/A (Historical)'}</span>
               </div>
             </div>
 

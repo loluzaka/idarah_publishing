@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -27,7 +28,7 @@ export default function HeaderWrapper() {
       const savedCart = localStorage.getItem('iad_cart') || localStorage.getItem('cart');
       if (savedCart) {
         const parsed = JSON.parse(savedCart);
-        const count = parsed.reduce((total: number, item: any) => total + (item.quantity || 0), 0);
+        const count = (parsed as { quantity?: number }[]).reduce((total, item) => total + (item.quantity || 0), 0);
         setTotalItems(count);
       } else {
         setTotalItems(0);
@@ -42,7 +43,12 @@ export default function HeaderWrapper() {
     };
   }, [pathname, user]);
 
-  useEffect(() => { setMobileMenuOpen(false); }, [pathname]);
+  // Close the mobile menu whenever the route changes (state adjusted during render).
+  const [menuPath, setMenuPath] = useState(pathname);
+  if (menuPath !== pathname) {
+    setMenuPath(pathname);
+    setMobileMenuOpen(false);
+  }
 
   if (pathname === '/checkout' || pathname === '/login') return null;
 
@@ -176,7 +182,7 @@ export default function HeaderWrapper() {
       <header className="lg:hidden px-4 py-2.5">
         <div className="flex items-center justify-between">
 
-          <a href="/" className="flex items-center gap-3 min-w-0">
+          <Link href="/" className="flex items-center gap-3 min-w-0">
             <div className="relative w-[52px] h-[52px] flex-shrink-0 select-none bg-transparent">
               <Image src="/logo.svg?v=4" alt="Idarah-i Adabiyat-i Dilli Emblem" fill className="object-contain mix-blend-multiply" priority />
             </div>
@@ -184,7 +190,7 @@ export default function HeaderWrapper() {
               className="text-xs sm:text-sm md:text-base font-bold tracking-wider uppercase text-[#1A1A1A] leading-none whitespace-nowrap truncate min-w-0">
               Idarah-i Adabiyat-i Delli
             </h1>
-          </a>
+          </Link>
 
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <a

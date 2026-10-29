@@ -12,13 +12,13 @@ import {
   collection,
   doc,
   updateDoc,
-  getDoc,
   getDocs,
   query,
   orderBy,
   where,
   serverTimestamp,
   Timestamp,
+  type DocumentData,
 } from 'firebase/firestore';
 
 export const ORDER_STATUSES = [
@@ -102,12 +102,12 @@ function ordersCol() {
   return collection(db, 'orders');
 }
 
-function isPlainObject(v: unknown): v is Record<string, any> {
+function isPlainObject(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === 'object' && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype;
 }
 
-function stripUndefined(obj: Record<string, any>): Record<string, any> {
-  const result: Record<string, any> = {};
+function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
     if (v === undefined) continue;
     if (isPlainObject(v)) {
@@ -121,7 +121,7 @@ function stripUndefined(obj: Record<string, any>): Record<string, any> {
   return result;
 }
 
-function toMs(v: any): number | undefined {
+function toMs(v: unknown): number | undefined {
   if (v instanceof Timestamp) return v.toMillis();
   if (v instanceof Date) return v.getTime();
   if (typeof v === 'number') return v;
@@ -129,7 +129,7 @@ function toMs(v: any): number | undefined {
 }
 
 // Normalises an item from either the new ({bookId, weightGrams}) or legacy ({id}) shape.
-function normItem(raw: any): OrderItem {
+function normItem(raw: DocumentData): OrderItem {
   return {
     id: raw.id ?? raw.bookId ?? '',
     title: raw.title ?? '',
@@ -140,7 +140,7 @@ function normItem(raw: any): OrderItem {
   };
 }
 
-function fromSnap(id: string, data: any): Order {
+function fromSnap(id: string, data: DocumentData): Order {
   const status = (ORDER_STATUSES as readonly string[]).includes(data.status)
     ? data.status
     : 'pending_payment';
@@ -209,7 +209,7 @@ export async function updateOrder(
   orderDocId: string,
   updates: Partial<Order> & { status?: OrderStatus }
 ): Promise<void> {
-  const payload = stripUndefined({ ...updates, updatedAt: serverTimestamp() } as Record<string, any>);
+  const payload = stripUndefined({ ...updates, updatedAt: serverTimestamp() } as Record<string, unknown>);
 
   // Auto-stamp state transition timestamps
   if (updates.status === 'paid') payload.paidAt = serverTimestamp();

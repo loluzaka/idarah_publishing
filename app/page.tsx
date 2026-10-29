@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import React, { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { client, urlFor } from './sanityClient';
@@ -10,7 +11,8 @@ import {
   getRecentSearches,
   getRecommendations,
 } from './lib/recommendations';
-import { CartItem, readCart, writeCart, clearCart as clearCartStorage } from './lib/cart';
+import { CartItem, writeCart, clearCart as clearCartStorage } from './lib/cart';
+import { useCart } from './hooks/useCart';
 import { stackedAuthors, stackedShortAuthors } from './lib/authors';
 import { getRecommendedCollections, ScoredCollection } from './lib/recommendations';
 import {
@@ -18,12 +20,10 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  MessageCircle,
-  Truck,
-  ArrowRight,
 } from 'lucide-react';
 import { useUserProfile } from './hooks/useUserProfile';
 import { customerPrice } from './lib/pricing';
+import type { SanityImage, CategoryRef } from './lib/sanity-types';
 
 interface CollectionBook {
   _id: string;
@@ -33,7 +33,7 @@ interface CollectionBook {
   price: number;
   originalPrice?: number;
   stock?: number;
-  coverImage?: any;
+  coverImage?: SanityImage;
 }
 
 interface Collection {
@@ -41,8 +41,8 @@ interface Collection {
   title: string;
   slug: { current: string };
   description?: string;
-  bannerImage?: any;
-  thumbnailImage?: any;
+  bannerImage?: SanityImage;
+  thumbnailImage?: SanityImage;
   displayStyle?: 'carousel' | 'grid' | 'featured_banner';
   featured?: boolean;
   priority?: number;
@@ -51,7 +51,7 @@ interface Collection {
 
 interface HomepageSlide {
   _key?: string;
-  image?: any;
+  image?: SanityImage;
   heading?: string;
   subheading?: string;
   buttonText?: string;
@@ -69,16 +69,16 @@ interface Book {
   series?: string;
   publisher?: string;
   description?: string;
-  categories?: any[];
+  categories?: CategoryRef[];
   coverPlaceholder?: string;
-  coverImage?: any;
+  coverImage?: SanityImage;
   homepageSlides?: HomepageSlide[];
 }
 
 // Unified slide shape used by the hero regardless of source (book, collection, fallback).
 interface HeroSlide {
   key: string;
-  image: any;
+  image: SanityImage;
   href?: string;
   bookId?: string;
   alt: string;
@@ -91,7 +91,7 @@ const FOR_YOU_LIMIT = 3;
 export default function HomePage() {
   const { discountRate } = useUserProfile();
   const [books, setBooks] = useState<Book[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const { cart, setCart } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCartMaximized, setIsCartMaximized] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -109,11 +109,11 @@ export default function HomePage() {
       setCurrentSlide((prev) => prev + 1);
     }, 5000);
 
-    const localCart = localStorage.getItem('iad_cart');
-    if (localCart) {
-      setCart(readCart());
-      setIsCartOpen(true);
-    }
+    // Reopen the cart panel if a cart exists (deferred so it isn't a
+    // synchronous setState inside the effect body).
+    const restoreCart = setTimeout(() => {
+      if (localStorage.getItem('iad_cart')) setIsCartOpen(true);
+    }, 0);
 
     const fetchFeatured = async () => {
       try {
@@ -161,6 +161,7 @@ export default function HomePage() {
 
     return () => {
       clearInterval(slideTimer);
+      clearTimeout(restoreCart);
       window.removeEventListener('openBookModal', handleOpenBook);
     };
   }, []);
@@ -179,7 +180,7 @@ export default function HomePage() {
 
   const hasRecommendations = recommendations.length > 0;
 
-  const recommendedCollections = useMemo<ScoredCollection[]>(
+  const recommendedCollections = useMemo<ScoredCollection<Collection>[]>(
     () => getRecommendedCollections(featuredCollections, books, viewedBooks, recentSearches),
     [featuredCollections, books, viewedBooks, recentSearches]
   );
@@ -228,28 +229,31 @@ const heroSlides = useMemo<HeroSlide[]>(() => {
   if (defaultBookSlides.length > 0) return defaultBookSlides;
 
   // Level 3: Featured collection banners
-  const collectionSlides: HeroSlide[] = (featuredCollections ?? [])
-    .filter(col => col?.bannerImage)
-    .map(col => ({
-      key: `col-${col._id}`,
-      image: col.bannerImage,
-      href: `/collections/${col.slug?.current ?? ''}`,
-      alt: col.title || 'Featured collection',
-      priority: col.priority,
-    }));
+  const collectionSlides: HeroSlide[] = (featuredCollections ?? []).flatMap(col =>
+    col?.bannerImage
+      ? [{
+          key: `col-${col._id}`,
+          image: col.bannerImage,
+          href: `/collections/${col.slug?.current ?? ''}`,
+          alt: col.title || 'Featured collection',
+          priority: col.priority,
+        }]
+      : []
+  );
   collectionSlides.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
   if (collectionSlides.length > 0) return collectionSlides;
 
   // Level 4: Fallback to regular book covers
-  return books
-    .slice(0, 4)
-    .filter(b => b.coverImage)
-    .map(b => ({
-      key: `cover-${b._id}`,
-      image: b.coverImage,
-      bookId: b._id,
-      alt: b.title,
-    }));
+  return books.slice(0, 4).flatMap(b =>
+    b.coverImage
+      ? [{
+          key: `cover-${b._id}`,
+          image: b.coverImage,
+          bookId: b._id,
+          alt: b.title,
+        }]
+      : []
+  );
 }, [rankedRecommendations, featuredCollections, books, hasHistory]);
 
 const hasHeroSlides = heroSlides.length > 0;
@@ -331,10 +335,10 @@ const hasHeroSlides = heroSlides.length > 0;
             )}
 
             <div className="absolute top-2 left-2 flex flex-col gap-1 pointer-events-none">
-              {book.categories?.some((c: any) => c.slug === 'new-arrivals') && (
+              {book.categories?.some((c) => c.slug === 'new-arrivals') && (
                 <span className="font-sans text-[8px] font-bold uppercase tracking-wider bg-white/95 text-[#7D5A34] border border-[#7D5A34]/20 px-1.5 py-0.5 rounded shadow-xs">New Arrival</span>
               )}
-              {book.categories?.some((c: any) => c.slug === 'bestsellers') && (
+              {book.categories?.some((c) => c.slug === 'bestsellers') && (
                 <span className="font-sans text-[8px] font-bold uppercase tracking-wider bg-[#1A1A1A]/95 text-white px-1.5 py-0.5 rounded shadow-xs">Bestseller</span>
               )}
             </div>
@@ -603,7 +607,7 @@ const hasHeroSlides = heroSlides.length > 0;
                 {cart.length === 0 ? (
                   <div className="py-8 text-center">
                     <p className="font-sans text-[11px] text-[#1A1A1A]/40 italic mb-3">Your selection is empty.</p>
-                    <a href="/books" className="font-sans text-[10px] font-bold uppercase tracking-widest text-[#7D5A34] hover:underline">Browse Publications →</a>
+                    <Link href="/books" className="font-sans text-[10px] font-bold uppercase tracking-widest text-[#7D5A34] hover:underline">Browse Publications →</Link>
                   </div>
                 ) : (
                   <div className="space-y-4">

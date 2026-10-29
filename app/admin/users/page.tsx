@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { UserCog, Check, Percent } from 'lucide-react';
 import {
   getUserProfile,
@@ -11,7 +11,6 @@ import {
 } from '@/app/lib/userProfile';
 
 export default function AdminUsersPage() {
-  const [emailKey, setEmailKey] = useState('');
   const [found, setFound] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
@@ -39,7 +38,6 @@ export default function AdminUsersPage() {
       setFound(p);
       setNewType(p.accountType);
       setNewDiscount(String(p.discountRate ?? 0));
-      void emailKey;
     } catch (err) {
       console.warn(err);
       show('err', 'Lookup failed. Check the id and try again.');
@@ -87,7 +85,7 @@ export default function AdminUsersPage() {
           User id (uid)
         </label>
         <p className="text-[10px] text-[#1A1A1A]/50 mb-2 leading-relaxed">
-          Find it on any of the user's rows in Admin → Orders (click the order to see the uid), or in Firebase Console → Authentication.
+          Find it on any of the user&apos;s rows in Admin → Orders (click the order to see the uid), or in Firebase Console → Authentication.
         </p>
         <div className="flex gap-2">
           <input
@@ -137,7 +135,7 @@ export default function AdminUsersPage() {
                 ))}
               </select>
               <p className="text-[10px] text-[#1A1A1A]/50 italic mt-2 leading-relaxed">
-                Switching to a verified type re-opens the account as pending review; switching to Regular clears it to not-required. Discount resets to the new type's default unless you type a value.
+                Switching to a verified type re-opens the account as pending review; switching to Regular clears it to not-required. Discount resets to the new type&apos;s default unless you type a value.
               </p>
             </div>
             <div>

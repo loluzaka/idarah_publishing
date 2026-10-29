@@ -73,7 +73,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   try {
     const snap = await getDoc(doc(db, 'users', uid));
     if (!snap.exists()) return null;
-    const data = snap.data() as any;
+    const data = snap.data()!;
     return {
       uid,
       name: data.name,
@@ -141,7 +141,7 @@ export async function adminSetVerification(
   approvedByUid: string,
   discountRate?: number
 ): Promise<void> {
-  const payload: any = {
+  const payload: Record<string, unknown> = {
     verificationStatus: status,
     updatedAt: serverTimestamp(),
     approvedAt: status === 'approved' ? serverTimestamp() : null,
@@ -156,7 +156,7 @@ export async function adminSetVerification(
 export async function adminSetAccountType(uid: string, accountType: AccountType, approvedByUid?: string): Promise<void> {
   const canonical = canonicalAccountType(accountType);
   const meta = ACCOUNT_TYPES.find(a => a.value === canonical);
-  const payload: any = { accountType: canonical, updatedAt: serverTimestamp() };
+  const payload: Record<string, unknown> = { accountType: canonical, updatedAt: serverTimestamp() };
   // Re-derive verification status from the new type so the two fields never contradict:
   // non-verified types → not_required, verified types → back to pending for review.
   if (meta) {
@@ -197,7 +197,7 @@ export async function listPendingVerifications(): Promise<UserProfile[]> {
     const q = query(collection(db, 'users'), where('verificationStatus', '==', 'pending'));
     const snap = await getDocs(q);
     return snap.docs.map(d => {
-      const data = d.data() as any;
+      const data = d.data();
       return {
         uid: d.id,
         name: data.name,

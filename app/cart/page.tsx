@@ -1,26 +1,19 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
-import { CartItem, readCart, writeCart, clearCart as clearCartStorage } from '@/app/lib/cart';
+import { CartItem, clearCart as clearCartStorage } from '@/app/lib/cart';
+import { useCart } from '@/app/hooks/useCart';
 import { stackedAuthors } from '@/app/lib/authors';
 import { ClipboardList, ArrowRight, ArrowLeft, Trash2 } from 'lucide-react';
 
 export default function CartViewPage() {
   const router = useRouter();
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { cart, setCart, hydrated } = useCart();
+  const loading = !hydrated;
 
-  useEffect(() => {
-    setCart(readCart());
-    setLoading(false);
-  }, []);
-
-  const setAndPersist = (next: CartItem[]) => {
-    setCart(next);
-    writeCart(next);
-    setTimeout(() => window.dispatchEvent(new Event('storage')), 0);
-  };
+  // setCart persists to localStorage and notifies every cart listener.
+  const setAndPersist = (next: CartItem[]) => setCart(next);
 
   const increaseQuantity = (id: string) => {
     setAndPersist(cart.map(i => i.id === id ? { ...i, quantity: i.quantity + 1 } : i));
@@ -41,9 +34,7 @@ export default function CartViewPage() {
   };
 
   const handleClear = () => {
-    setCart([]);
     clearCartStorage();
-    setTimeout(() => window.dispatchEvent(new Event('storage')), 0);
   };
 
   const subtotal = cart.reduce((t, i) => t + i.price * i.quantity, 0);

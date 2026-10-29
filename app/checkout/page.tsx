@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
-import { CartItem, clearCart, cartSubtotal, subscribeCart, getCartSnapshot, parseCartSnapshot } from '@/app/lib/cart';
+import { CartItem, clearCart, subscribeCart, getCartSnapshot, parseCartSnapshot } from '@/app/lib/cart';
 import { formatAuthors } from '@/app/lib/authors';
 import { client } from '@/app/sanityClient';
 import { calculateShipping, PACKAGING_WEIGHT_GRAMS } from '@/app/lib/shipping';
@@ -101,7 +101,22 @@ export default function CheckoutPage() {
     })();
   }, [cart]);
 
-  const subtotal = useMemo(() => cartSubtotal(cart), [cart]);
+  // Carts store the already-discounted price, but the member discount is applied
+  // below (and by the server) to the book's base price — so price the order from
+  // the base price, or the discount would be taken off twice.
+  const baseById = useMemo(
+    () => new Map(enriched.map(i => [i.id, i.basePrice] as const)),
+    [enriched]
+  );
+  const pricesReady = cart.length > 0 && cart.every(i => baseById.get(i.id) != null);
+  const pricedCart = useMemo(
+    () => cart.map(i => ({ ...i, price: baseById.get(i.id) ?? i.price })),
+    [cart, baseById]
+  );
+  const subtotal = useMemo(
+    () => pricedCart.reduce((t, i) => t + i.price * i.quantity, 0),
+    [pricedCart]
+  );
 const shipping = useMemo(() => calculateShipping(
     enriched.map(i => ({ quantity: i.quantity, weightGrams: i.weightGrams })),
     { country }
@@ -228,7 +243,7 @@ const shipping = useMemo(() => calculateShipping(
   const handlePaid = (orderId: string) => {
     setGeneratedOrderId(orderId);
     setPaidAmount(estimatedTotal);
-    setInvoice({ cart, subtotal, discountAmount, postageCost, handlingCharge, totalWeight: shipping.totalWeight });
+    setInvoice({ cart: pricedCart, subtotal, discountAmount, postageCost, handlingCharge, totalWeight: shipping.totalWeight });
     setOrderComplete(true);
     clearCart();
   };
@@ -377,7 +392,7 @@ const shipping = useMemo(() => calculateShipping(
                   idToken={idToken}
                   totalRupees={estimatedTotal}
                   magicMode={magicMode}
-                  disabled={shipping.requiresQuote || !idToken}
+                  disabled={shipping.requiresQuote || !idToken || !pricesReady}
                   onPaid={handlePaid}
                 />
 
@@ -399,7 +414,7 @@ const shipping = useMemo(() => calculateShipping(
                 </div>
 
                 <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1 border-b border-[#1A1A1A]/5 pb-4">
-                  {cart.map(item => (
+                  {pricedCart.map(item => (
                     <div key={item.id} className="flex justify-between text-xs">
                       <div>
                         <p className="font-serif font-bold">{item.title}</p>

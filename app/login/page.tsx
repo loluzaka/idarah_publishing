@@ -12,6 +12,8 @@ import {
 } from 'firebase/auth';
 import { createUserProfile, ACCOUNT_TYPES, AccountType } from '@/app/lib/userProfile';
 
+interface CartLine { id: string; quantity: number }
+
 // Official multi-colour Google "G" mark.
 function GoogleGLogo({ className = 'w-4 h-4' }: { className?: string }) {
   return (
@@ -42,11 +44,11 @@ export default function LoginPage() {
     const guestCartStr = localStorage.getItem('iad_cart_GUEST');
     const userCartStr = localStorage.getItem(`iad_cart_${userUid}`);
 
-    let guestCart = guestCartStr ? JSON.parse(guestCartStr) : [];
-    let userCart = userCartStr ? JSON.parse(userCartStr) : [];
+    const guestCart: CartLine[] = guestCartStr ? JSON.parse(guestCartStr) : [];
+    const userCart: CartLine[] = userCartStr ? JSON.parse(userCartStr) : [];
 
-    guestCart.forEach((guestItem: any) => {
-      const existingItem = userCart.find((uItem: any) => uItem.id === guestItem.id);
+    guestCart.forEach((guestItem) => {
+      const existingItem = userCart.find((uItem) => uItem.id === guestItem.id);
       if (existingItem) {
         existingItem.quantity += guestItem.quantity;
       } else {
@@ -83,8 +85,8 @@ export default function LoginPage() {
         mergeGuestCartToAccount(userCredential.user.uid);
       }
       router.push('/books');
-    } catch (err: any) {
-      setError(err.message.replace('Firebase:', ''));
+    } catch (err) {
+      setError((err instanceof Error ? err.message : 'Something went wrong. Please try again.').replace('Firebase:', ''));
     } finally {
       setLoading(false);
     }
@@ -103,8 +105,8 @@ export default function LoginPage() {
       });
       mergeGuestCartToAccount(result.user.uid);
       router.push('/books');
-    } catch (err: any) {
-      setError(err.message.replace('Firebase:', ''));
+    } catch (err) {
+      setError((err instanceof Error ? err.message : 'Something went wrong. Please try again.').replace('Firebase:', ''));
     }
   };
 

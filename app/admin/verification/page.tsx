@@ -18,16 +18,17 @@ export default function AdminVerificationPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [discounts, setDiscounts] = useState<Record<string, string>>({});
 
-  const load = async () => {
-    setLoading(true);
-    const list = await listPendingVerifications();
-    setPending(list);
-    // Pre-fill each row with its type's default discount — you still edit per user.
-    setDiscounts(Object.fromEntries(list.map(u => [u.uid, String(defaultDiscountFor(u.accountType))])));
-    setLoading(false);
-  };
-
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    listPendingVerifications().then(list => {
+      if (cancelled) return;
+      setPending(list);
+      // Pre-fill each row with its type's default discount — you still edit per user.
+      setDiscounts(Object.fromEntries(list.map(u => [u.uid, String(defaultDiscountFor(u.accountType))])));
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleApprove = async (u: UserProfile) => {
     if (!user) return;

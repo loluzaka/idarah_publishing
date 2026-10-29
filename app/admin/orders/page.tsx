@@ -45,7 +45,15 @@ export default function AdminOrdersPage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    getAllOrders().then(list => {
+      if (cancelled) return;
+      setOrders(list);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
 

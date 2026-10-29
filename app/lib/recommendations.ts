@@ -1,6 +1,7 @@
 // Shared utility for search history, recently viewed books, and recommendation scoring.
 // All state is localStorage-only — existing singular-author entries are read safely.
 
+import type { SanityImage, CategoryRef } from './sanity-types';
 import { normalizeAuthors, sharesAuthor } from './authors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -13,7 +14,7 @@ export interface RecentlyViewedBook {
   author?: string | null;
   series?: string | null;
   publisher?: string | null;
-  categories?: Array<{ _id?: string; title?: string; slug?: string | { current: string } | null } | null> | null;
+  categories?: Array<CategoryRef | null> | null;
   viewedAt?: number;
 }
 
@@ -28,12 +29,11 @@ export interface ScoredBook {
   series?: string | null;
   publisher?: string | null;
   description?: string | null;
-  categories?: Array<{ _id?: string; title?: string; slug?: string | { current: string } | null } | null> | null;
+  categories?: Array<CategoryRef | null> | null;
   price: number;
   originalPrice?: number | null;
-  coverImage?: any;
+  coverImage?: SanityImage;
   coverPlaceholder?: string | null;
-  [key: string]: any;
 }
 
 // ─── localStorage keys ────────────────────────────────────────────────────────
@@ -212,8 +212,8 @@ export function scoreBook(
 
 // ─── Collection Recommendation ───────────────────────────────────────────────
 
-export interface ScoredCollection {
-  collection: any;
+export interface ScoredCollection<C = unknown> {
+  collection: C;
   score: number;
   matchCount: number;
 }
@@ -223,18 +223,18 @@ export interface ScoredCollection {
  * Collections with zero matching books are excluded.
  * Returns collections sorted by score descending.
  */
-export function getRecommendedCollections(
-  collections: any[],
+export function getRecommendedCollections<C extends { books?: ScoredBook[] | null }>(
+  collections: C[],
   allBooks: ScoredBook[],
   viewedBooks: RecentlyViewedBook[],
   recentSearches: string[]
-): ScoredCollection[] {
+): ScoredCollection<C>[] {
   if (!Array.isArray(collections) || collections.length === 0) return [];
   if (viewedBooks.length === 0 && recentSearches.length === 0) return [];
 
   const now = Date.now();
 
-  const scored: ScoredCollection[] = [];
+  const scored: ScoredCollection<C>[] = [];
 
   for (const col of collections) {
     if (!col || !Array.isArray(col.books)) continue;
@@ -265,11 +265,11 @@ export function getRecommendedCollections(
  * Books already in viewedBooks are pushed to the bottom to encourage discovery.
  * Books with score 0 are excluded entirely (no signal for them).
  */
-export function getRecommendations(
-  allBooks: ScoredBook[],
+export function getRecommendations<B extends ScoredBook>(
+  allBooks: B[],
   viewedBooks: RecentlyViewedBook[],
   recentSearches: string[]
-): ScoredBook[] {
+): B[] {
   if (!Array.isArray(allBooks) || allBooks.length === 0) return [];
   if (viewedBooks.length === 0 && recentSearches.length === 0) return [];
 
@@ -277,7 +277,7 @@ export function getRecommendations(
   const viewedIds = new Set(viewedBooks.map(b => b?._id).filter(Boolean));
 
   const scored = allBooks
-    .filter((b): b is ScoredBook => !!b && typeof b._id === 'string')
+    .filter((b): b is B => !!b && typeof b._id === 'string')
     .map(book => ({ book, score: scoreBook(book, viewedBooks, recentSearches, now) }))
     .filter(({ score }) => score > 0);
 

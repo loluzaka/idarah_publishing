@@ -1,4 +1,4 @@
-import { defineConfig } from 'sanity'
+import { defineConfig, type Rule as SanityRule, type ValidationContext } from 'sanity'
 import { structureTool } from 'sanity/structure'
 import { UserIcon, BookIcon, TagIcon, ClipboardIcon } from '@sanity/icons'
 import { structure } from './sanity/structure'
@@ -16,7 +16,7 @@ const authorType = {
       name: 'name',
       title: 'Author Name',
       type: 'string',
-      validation: (Rule: any) => Rule.required().error('An author name is required.'),
+      validation: (Rule: SanityRule) => Rule.required().error('An author name is required.'),
     },
     {
       name: 'shortName',
@@ -32,7 +32,7 @@ const authorType = {
         source: 'name',
         maxLength: 96,
       },
-      validation: (Rule: any) => Rule.required(),
+      validation: (Rule: SanityRule) => Rule.required(),
     },
     {
       name: 'qualifications',
@@ -84,7 +84,7 @@ const bookType = {
       title: 'Authors / Contributors',
       type: 'array',
       of: [{ type: 'reference', to: [{ type: 'author' }] }],
-      validation: (Rule: any) => Rule.required().min(1).error('Add at least one author or contributor.'),
+      validation: (Rule: SanityRule) => Rule.required().min(1).error('Add at least one author or contributor.'),
       description: 'Add every author, editor, translator, or contributor in the order they should be credited.',
     },
     {
@@ -97,10 +97,10 @@ const bookType = {
       title: 'Original Retail Price (INR)',
       type: 'number',
       description: 'Optional. If set and greater than the selling Price, the book is shown as on sale with a computed discount.',
-      validation: (Rule: any) =>
+      validation: (Rule: SanityRule) =>
         Rule.min(0)
           .error('Original price cannot be negative.')
-          .custom((originalPrice: number | undefined, context: any) => {
+          .custom((originalPrice: number | undefined, context: ValidationContext) => {
             if (originalPrice === undefined || originalPrice === null) return true
             const price = context?.document?.price
             if (typeof price === 'number' && originalPrice < price) {
@@ -140,24 +140,11 @@ const bookType = {
       type: 'number',
     },
     {
-      name: 'isbn',
-      title: 'ISBN',
-      type: 'string',
-      description: 'International Standard Book Number (10 or 13 digits, hyphens optional). Leave empty for historical publications without an ISBN.',
-      validation: (Rule: any) =>
-        Rule.custom((val: string | undefined) => {
-          if (!val) return true; // optional
-          const digits = val.replace(/[-\s]/g, '');
-          if (!/^\d{10}(\d{3})?$/.test(digits)) return 'Enter a valid 10-digit or 13-digit ISBN.';
-          return true;
-        }),
-    },
-    {
       name: 'weightGrams',
       title: 'Weight (grams)',
       type: 'number',
       description: 'Physical weight of one copy. Used to compute India Post Gyan Post shipping. Estimate for hardcovers: pages × 2g; paperbacks: pages × 1.5g.',
-      validation: (Rule: any) => Rule.min(0).integer(),
+      validation: (Rule: SanityRule) => Rule.min(0).integer(),
     },
     {
       name: 'language',
@@ -183,7 +170,7 @@ const bookType = {
       type: 'number',
       description: 'Number of copies currently in inventory. 0 = Out of Stock. 1-5 = shows "Only X Left". Leave blank to display "In Stock" by default. Managed manually.',
       initialValue: 10,
-      validation: (Rule: any) => Rule.min(0).integer().error('Stock must be zero or a positive whole number.'),
+      validation: (Rule: SanityRule) => Rule.min(0).integer().error('Stock must be zero or a positive whole number.'),
     },
     {
       name: 'category',
@@ -241,13 +228,13 @@ const bookType = {
               type: 'image',
               options: { hotspot: true },
               description: 'Recommended dimensions: 1920 × 700 px (aspect ratio 2.74:1). Upload wide banner artwork.',
-              validation: (Rule: any) => Rule.required().error('A slide image is required.'),
+              validation: (Rule: SanityRule) => Rule.required().error('A slide image is required.'),
             },
             {
               name: 'heading',
               title: 'Heading',
               type: 'string',
-              validation: (Rule: any) => Rule.required(),
+              validation: (Rule: SanityRule) => Rule.required(),
             },
             {
               name: 'subheading',
@@ -265,7 +252,7 @@ const bookType = {
               title: 'Button Link',
               type: 'url',
               description: 'Optional. Full URL or internal path (e.g. /books).',
-              validation: (Rule: any) =>
+              validation: (Rule: SanityRule) =>
                 Rule.uri({ allowRelative: true, scheme: ['http', 'https', 'mailto', 'tel'] }),
             },
             {
@@ -319,14 +306,14 @@ const collectionType = {
       name: 'title',
       title: 'Collection Title',
       type: 'string',
-      validation: (Rule: any) => Rule.required(),
+      validation: (Rule: SanityRule) => Rule.required(),
     },
     {
       name: 'slug',
       title: 'Slug',
       type: 'slug',
       options: { source: 'title', maxLength: 96 },
-      validation: (Rule: any) => Rule.required(),
+      validation: (Rule: SanityRule) => Rule.required(),
     },
     {
       name: 'description',
@@ -406,7 +393,7 @@ const bundleType = {
   type: 'document',
   icon: BookIcon,
   fields: [
-    { name: 'name', title: 'Bundle Name', type: 'string', validation: (Rule: any) => Rule.required() },
+    { name: 'name', title: 'Bundle Name', type: 'string', validation: (Rule: SanityRule) => Rule.required() },
     { name: 'description', title: 'Description', type: 'text' },
     { name: 'coverImage', title: 'Bundle Cover Image', type: 'image', options: { hotspot: true } },
     {
@@ -414,7 +401,7 @@ const bundleType = {
       title: 'Books in this Bundle',
       type: 'array',
       of: [{ type: 'reference', to: [{ type: 'book' }] }],
-      validation: (Rule: any) => Rule.min(2).error('A bundle must contain at least two books.'),
+      validation: (Rule: SanityRule) => Rule.min(2).error('A bundle must contain at least two books.'),
     },
     {
       name: 'discountType',
@@ -436,7 +423,7 @@ const bundleType = {
       title: 'Discount Value',
       type: 'number',
       description: 'Meaning depends on Discount Type: percent for percentage (0-100), rupees for fixed / final.',
-      validation: (Rule: any) => Rule.min(0),
+      validation: (Rule: SanityRule) => Rule.min(0),
     },
     {
       name: 'active',

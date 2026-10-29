@@ -7,7 +7,6 @@ export interface SearchableBook {
   _id: string;
   title?: string | null;
   authors?: string[] | null;
-  isbn?: string | null;
   description?: string | null;
   publisher?: string | null;
   language?: string | null;
@@ -23,7 +22,6 @@ export const FUSE_OPTIONS: IFuseOptions<SearchableBook> = {
   ignoreLocation: true,
   keys: [
     { name: 'title',              weight: 1.0 },
-    { name: 'isbn',               weight: 0.9 },
     { name: 'authors',            weight: 0.8 },
     { name: 'series',             weight: 0.6 },
     { name: 'categories.title',   weight: 0.5 },

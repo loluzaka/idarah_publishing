@@ -1,11 +1,14 @@
 "use client";
 
+import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { client, urlFor } from '@/app/sanityClient';
+import type { SanityImage } from '@/app/lib/sanity-types';
 
 const BookModal = dynamic(() => import('@/app/components/BookModal'), { ssr: false });
-import { CartItem, readCart, writeCart } from '@/app/lib/cart';
+import { writeCart } from '@/app/lib/cart';
+import { useCart } from '@/app/hooks/useCart';
 import { stackedShortAuthors } from '@/app/lib/authors';
 import { isPurchasable } from '@/app/lib/stock';
 import { Layers } from 'lucide-react';
@@ -17,13 +20,12 @@ interface CollectionBook {
   title: string;
   authors?: string[] | null;
   authorShorts?: (string | null)[];
-  isbn?: string;
   series?: string;
   language?: string;
   price: number;
   originalPrice?: number;
   stock?: number;
-  coverImage?: any;
+  coverImage?: SanityImage;
   coverPlaceholder?: string;
 }
 
@@ -32,7 +34,7 @@ interface Collection {
   title: string;
   slug: { current: string };
   description?: string;
-  bannerImage?: any;
+  bannerImage?: SanityImage;
   displayStyle?: string;
   books: CollectionBook[];
 }
@@ -42,13 +44,10 @@ export default function CollectionClient({ slug }: { slug: string }) {
 
   const [collection, setCollection] = useState<Collection | null>(null);
   const [loading, setLoading] = useState(true);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const { cart, setCart } = useCart();
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
-  const [cartOpen, setCartOpen] = useState(false);
 
   useEffect(() => {
-    setCart(readCart());
-
     const handleOpenBook = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.bookId) setSelectedBookId(detail.bookId);
@@ -69,7 +68,7 @@ export default function CollectionClient({ slug }: { slug: string }) {
               _id, title,
               "authors": authors[]->name,
               "authorShorts": authors[]->shortName,
-              isbn, series, language,
+              series, language,
               price, originalPrice, stock, coverImage, coverPlaceholder
             }
           }`,
@@ -95,7 +94,6 @@ export default function CollectionClient({ slug }: { slug: string }) {
       writeCart(updated);
       return updated;
     });
-    setCartOpen(true);
   };
 
   const subtotal = cart.reduce((t, i) => t + i.price * i.quantity, 0);
@@ -114,7 +112,7 @@ export default function CollectionClient({ slug }: { slug: string }) {
       <div className="min-h-screen bg-[#FBFBFA] flex items-center justify-center font-serif text-[#1A1A1A]">
         <div className="text-center">
           <p className="font-sans text-sm text-[#1A1A1A]/50 mb-4">Collection not found.</p>
-          <a href="/books" className="font-sans text-xs font-bold uppercase tracking-widest text-[#7D5A34] hover:underline">← Back to Catalog</a>
+          <Link href="/books" className="font-sans text-xs font-bold uppercase tracking-widest text-[#7D5A34] hover:underline">← Back to Catalog</Link>
         </div>
       </div>
     );
@@ -136,7 +134,7 @@ export default function CollectionClient({ slug }: { slug: string }) {
       >
         <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A1A]/80 via-[#1A1A1A]/30 to-transparent" />
         <div className="relative max-w-7xl mx-auto px-6 pb-10 w-full">
-          <a href="/books" className="font-sans text-[10px] uppercase tracking-widest text-white/50 hover:text-white transition-colors block mb-2">← All Publications</a>
+          <Link href="/books" className="font-sans text-[10px] uppercase tracking-widest text-white/50 hover:text-white transition-colors block mb-2">← All Publications</Link>
           <span className="font-sans text-[10px] uppercase tracking-[0.25em] font-bold text-[#7D5A34] block mb-1">Collection</span>
           <h1 className="text-3xl md:text-4xl font-normal text-white tracking-tight leading-tight">{collection.title}</h1>
         </div>
@@ -188,7 +186,6 @@ export default function CollectionClient({ slug }: { slug: string }) {
                       </div>
                       <h4 className="text-base font-bold leading-snug group-hover:text-[#7D5A34] transition-colors">{book.title}</h4>
                       <p className="font-sans text-[11px] text-[#1A1A1A]/55 mt-1 whitespace-pre-line leading-snug line-clamp-2">{stackedShortAuthors(book.authors, book.authorShorts, 'Unknown Author')}</p>
-                      {book.isbn && <p className="font-mono text-[8px] text-[#1A1A1A]/40 mt-1.5 uppercase">ISBN: {book.isbn}</p>}
                       {book.language && <p className="font-sans text-[8px] text-[#1A1A1A]/40 mt-0.5 uppercase tracking-wider">{book.language}</p>}
                     </button>
 
