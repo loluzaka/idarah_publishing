@@ -195,7 +195,7 @@ export default function PayButton({
         description: "Book order",
         order_id: razorpayOrderId,
         ...(isMagic
-          ? { one_click_checkout: true, show_coupons: true }
+          ? { one_click_checkout: true, show_coupons: false }
           : {}),
         prefill: {
           name: customerName || user.name || "",
