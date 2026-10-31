@@ -292,6 +292,7 @@ export async function POST(req: Request) {
             orderId: docId,
             displayOrderId,
             razorpayOrderId: rzpOrder.id,
+            keyId: process.env.RAZORPAY_KEY_ID,
             amount: rzpOrder.amount, // paise
             discountPaise,
           });
@@ -367,6 +368,7 @@ export async function POST(req: Request) {
       orderId: docId,
       displayOrderId,
       razorpayOrderId: rzpOrder.id,
+      keyId: process.env.RAZORPAY_KEY_ID,
       amount: rzpOrder.amount, // paise
     });
   } catch (err) {

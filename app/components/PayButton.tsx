@@ -168,7 +168,7 @@ export default function PayButton({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Could not start checkout");
       }
-      const { orderId, displayOrderId, razorpayOrderId, amount, checkoutType, discountPaise } =
+      const { orderId, displayOrderId, razorpayOrderId, keyId, amount, checkoutType, discountPaise } =
         await res.json();
 
       // 2. Load the right Razorpay script. If Magic's won't load, fall back now.
@@ -188,7 +188,8 @@ export default function PayButton({
 
       // 3. Open Razorpay Checkout on this page (no redirect away).
       const rzp = new window.Razorpay({
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+        // Use the key the server created the order with, so they can never disagree.
+        key: keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
         amount, // paise
         currency: "INR",
         name: "Idarah Publishing",
