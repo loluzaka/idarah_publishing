@@ -14,7 +14,9 @@ export default function robots(): MetadataRoute.Robots {
           '/profile',
           '/checkout',
           '/login',
-          '/studio',   // Sanity Studio
+          '/cart',
+          '/studio',   // Sanity Studio (legacy path)
+          '/stud10',   // Sanity Studio (actual route: app/stud10)
         ],
       },
     ],

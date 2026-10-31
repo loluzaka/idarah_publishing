@@ -9,7 +9,7 @@ const FOOTER_LINKS = [
     links: [
       { label: "Catalogue", href: "/books" },
       { label: "Authors", href: "/authors" },
-      { label: "Collections", href: "/collections" },
+      { label: "Articles & Guides", href: "/articles" },
     ],
   },
   {
@@ -52,6 +52,12 @@ export default function Footer() {
               A premium publishing house specialising in Islamic Studies, Urdu
               Literature, Arabic Literature, History, Biography, and
               Children&apos;s Books.
+            </p>
+            {/* Visible spelling variants: people search for these, so say them on the page. */}
+            <p className="mt-3 text-[10px] text-[#FBFBFA]/40 leading-relaxed font-sans">
+              Also known as Idarah-e-Adabiyat-e-Delhi, Idara Adabiyat Delhi, Idarah Books ·{" "}
+              <span lang="ur" dir="rtl">ادارہ ادبیات دہلی</span> ·{" "}
+              <span lang="hi">इदारे अदबियात दिल्ली</span>
             </p>
             <div className="flex items-center gap-3 mt-5">
               <a

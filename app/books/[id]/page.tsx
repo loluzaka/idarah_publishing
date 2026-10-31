@@ -1,187 +1,129 @@
-"use client";
-
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { client, urlFor } from '../../sanityClient';
-import { stackedAuthors } from '../../lib/authors';
-import { readCart, writeCart } from '../../lib/cart';
-import type { SanityImage } from '../../lib/sanity-types';
+import { notFound } from 'next/navigation';
+import { client, sanityImageUrl } from '@/app/sanityClient';
+import { buildMetadata, SITE } from '@/app/lib/seo';
+import { SchemaOrg } from '@/components/seo/SchemaOrg';
+import BookDetailClient, { type BookDetail } from './BookDetailClient';
 
-interface Book {
-  _id: string;
-  title: string;
-  authors?: string[] | null;
-  series?: string;
-  price: number;
-  description?: string;
-  pages?: number;
-  binding?: string;
-  publisher?: string;
-  year?: string;
-  category?: { title: string };
-  coverPlaceholder?: string;
-  coverImage?: SanityImage;
+interface Props {
+  params: Promise<{ id: string }>;
 }
 
-export default function BookDetailPage() {
-  const { id } = useParams();
-  const [book, setBook] = useState<Book | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [addedToCart, setAddedToCart] = useState(false);
+// Server-rendered + ISR: metadata, JSON-LD and the book's text are in the HTML
+// crawlers fetch, and Netlify serves it from the CDN between revalidations.
+export const revalidate = 300;
 
-  useEffect(() => {
-    if (!id) return;
-
-    const fetchBookDetails = async () => {
-      try {
-        const data = await client.fetch(
-          `*[_type == "book" && _id == $id][0]{
-            ...,
-            "authors": authors[]->name,
-            "category": category->{title}
-          }`,
-          { id }
-        );
-        setBook(data);
-      } catch (error) {
-        console.error("Error pulling volume archives:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBookDetails();
-  }, [id]);
-
-  const handleAddToCart = () => {
-    if (!book) return;
-
-    const currentCart = readCart();
-    const existingItem = currentCart.find(item => item.id === book._id);
-    const updatedCart = existingItem
-      ? currentCart.map(item => item.id === book._id ? { ...item, quantity: item.quantity + 1 } : item)
-      : [...currentCart, { id: book._id, title: book.title, authors: book.authors ?? [], price: book.price, quantity: 1 }];
-
-    writeCart(updatedCart);
-    
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FBFBFA] flex items-center justify-center font-sans text-xs tracking-widest uppercase text-[#1A1A1A]/50 animate-pulse">
-        Retrieving Scholarly Dossier...
-      </div>
-    );
+// Pre-render every book at build time (ISR keeps them fresh); books added later
+// render on their first request.
+export async function generateStaticParams() {
+  try {
+    const ids = await client.fetch<string[]>(`*[_type == "book"]._id`);
+    return (ids ?? []).map((id) => ({ id }));
+  } catch {
+    return [];
   }
+}
 
-  if (!book) {
-    return (
-      <div className="min-h-screen bg-[#FBFBFA] flex flex-col items-center justify-center font-serif text-center p-6">
-        <h2 className="text-2xl font-bold mb-2">Volume Archive Not Found</h2>
-        <p className="font-sans text-xs text-[#1A1A1A]/50 mb-6">The requested publication index record does not exist in the collection files.</p>
-        <Link href="/books" className="font-sans text-xs font-bold uppercase tracking-widest border border-[#1A1A1A] px-4 py-2 hover:bg-[#1A1A1A] hover:text-[#FBFBFA] transition-all">
-          Return to Archive
-        </Link>
-      </div>
-    );
+const BOOK_QUERY = `*[_type == "book" && _id == $id][0]{
+  _id, title, series, price, originalPrice, description, pages, binding,
+  publisher, year, language, stock, coverPlaceholder, coverImage,
+  "authors": authors[]->name,
+  "category": category->{title},
+  "categories": categories[]->{title, "slug": slug.current}
+}`;
+
+// Journal articles that feature this book — an internal-link pipeline in the
+// other direction (book page → article).
+const BOOK_ARTICLES_QUERY = `*[_type == "article" && defined(slug.current) && publishedAt <= now() && references($id)]
+  | order(publishedAt desc)[0...4]{ title, "slug": slug.current, excerpt }`;
+
+async function getBook(id: string): Promise<BookDetail | null> {
+  try {
+    return await client.fetch<BookDetail | null>(BOOK_QUERY, { id }, { next: { revalidate } });
+  } catch (err) {
+    console.error('Book query failed:', err);
+    return null;
   }
+}
+
+const trim = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const book = await getBook(id);
+  if (!book) return buildMetadata({ title: 'Book Not Found', noIndex: true });
+
+  const authors = (book.authors ?? []).filter(Boolean);
+  const byline = authors.length ? ` by ${authors.join(', ')}` : '';
+  const cats = (book.categories ?? []).map((c) => c.title).filter(Boolean);
+  const description = book.description?.trim()
+    ? trim(book.description.replace(/\s+/g, ' ').trim(), 158)
+    : `Buy ${book.title}${byline} online from Idara Adabiyat Delhi (Idarah Books) for ₹${book.price}. Shipped across India and worldwide.`;
+
+  return buildMetadata({
+    title: `${book.title}${byline}`,
+    description,
+    path: `/books/${book._id}`,
+    image: sanityImageUrl(book.coverImage, 1200) ?? undefined,
+    keywords: [
+      book.title,
+      `buy ${book.title} online`,
+      ...authors,
+      ...authors.map((a) => `${a} books`),
+      ...cats,
+      ...(book.language ? [`${book.language} books online`] : []),
+    ],
+  });
+}
+
+export default async function BookPage({ params }: Props) {
+  const { id } = await params;
+  const [book, articles] = await Promise.all([
+    getBook(id),
+    client
+      .fetch<{ title: string; slug: string; excerpt?: string }[]>(BOOK_ARTICLES_QUERY, { id }, { next: { revalidate } })
+      .catch(() => []),
+  ]);
+  if (!book) notFound(); // real HTTP 404 (the old client page returned 200 for missing books)
 
   return (
-    <div className="min-h-screen bg-[#FBFBFA] text-[#1A1A1A] font-serif py-12 px-6 selection:bg-[#7D5A34]/20">
-      <div className="max-w-5xl mx-auto">
-        
-        {/* BACK NAV BAR */}
-        <div className="mb-8">
-          <Link href="/books" className="font-sans text-[11px] font-bold uppercase tracking-wider text-[#1A1A1A]/60 hover:text-[#1A1A1A] transition-colors inline-flex items-center gap-2">
-            ← Back to Publications Archive
-          </Link>
-        </div>
+    <>
+      <SchemaOrg
+        type="book"
+        book={{
+          ...book,
+          coverImageUrl: sanityImageUrl(book.coverImage, 800),
+          url: `${SITE.url}/books/${book._id}`,
+        }}
+      />
+      <SchemaOrg
+        type="breadcrumb"
+        items={[
+          { name: 'Home', path: '/' },
+          { name: 'Catalogue', path: '/books' },
+          { name: book.title, path: `/books/${book._id}` },
+        ]}
+      />
 
-        {/* TWO COLUMN GRID PROFILE */}
-        <div className="flex flex-col md:flex-row gap-12 lg:gap-16 items-start bg-white border border-[#1A1A1A]/10 p-6 md:p-10 shadow-sm">
-          
-          {/* LEFT: BOOK ART IMAGE PANEL */}
-          <div className="w-full md:w-[35%] bg-[#1A1A1A]/5 border border-[#1A1A1A]/10 aspect-[3/4] flex items-center justify-center relative overflow-hidden flex-shrink-0">
-            {book.category?.title && (
-              <span className="absolute top-3 left-3 z-10 font-sans text-[9px] font-bold uppercase bg-[#7D5A34]/10 text-[#7D5A34] px-2 py-0.5 tracking-wider">
-                {book.category.title}
-              </span>
-            )}
-            {book.coverImage ? (
-              <img 
-                src={urlFor(book.coverImage).width(600).url()} 
-                alt={book.title} 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-5xl opacity-20 font-bold">{book.coverPlaceholder || "IAD"}</span>
-            )}
-          </div>
+      <BookDetailClient book={book} />
 
-          {/* RIGHT: COMPREHENSIVE TEXT METADATA */}
-          <div className="flex-grow space-y-6">
-            <div>
-              {book.series && (
-                <span className="font-sans text-xs uppercase tracking-widest text-[#1A1A1A]/50 block mb-1">
-                  {book.series}
-                </span>
-              )}
-              <h1 className="text-2xl md:text-4xl font-bold tracking-tight leading-tight mb-2">
-                {book.title}
-              </h1>
-              <p className="font-sans text-xs md:text-sm text-[#1A1A1A]/60 mt-1 whitespace-pre-line leading-relaxed">
-                {stackedAuthors(book.authors)}
-              </p>
-            </div>
-
-            {/* PRICE & DIRECT CALL ACTIONS */}
-            <div className="border-y border-[#1A1A1A]/10 py-4 flex flex-wrap items-center justify-between gap-4">
-              <span className="text-2xl font-sans font-bold text-[#1A1A1A]">
-                ₹{book.price}
-              </span>
-              
-              <button 
-                onClick={handleAddToCart}
-                className={`font-sans text-xs font-bold uppercase tracking-widest border px-6 py-3.5 transition-all duration-300 min-w-[160px] ${
-                  addedToCart 
-                    ? 'bg-[#7D5A34] text-white border-[#7D5A34]' 
-                    : 'bg-[#1A1A1A] text-white border-[#1A1A1A] hover:bg-transparent hover:text-[#1A1A1A]'
-                }`}
-              >
-                {addedToCart ? "✓ Added" : "Add to Basket"}
-              </button>
-            </div>
-
-            {/* EXPANDED ACADEMIC SYNOPSIS */}
-            <div className="space-y-2">
-              <h3 className="font-sans text-xs font-bold tracking-widest uppercase text-[#1A1A1A]/50">
-                Editorial Synopsis
-              </h3>
-              <p className="text-sm leading-relaxed text-[#1A1A1A]/80 font-sans tracking-wide">
-                {book.description || "Detailed source monograph registry data and translation indexes for this volume are currently being annotated by our editorial board."}
-              </p>
-            </div>
-
-            {/* DETAILED TECHNICAL MONOGRAPH SHEET */}
-            <div className="pt-4 space-y-3">
-              <h3 className="font-sans text-xs font-bold tracking-widest uppercase text-[#1A1A1A]/50 border-b border-[#1A1A1A]/5 pb-1">
-                Publication Details
-              </h3>
-              <div className="grid grid-cols-2 gap-y-2 gap-x-4 font-sans text-xs text-[#1A1A1A]/70">
-                <div><span className="font-bold text-[#1A1A1A]/50 uppercase text-[10px] tracking-wider block">Publisher</span> {book.publisher || "Idarah-i Adabiyat-i Dilli"}</div>
-                <div><span className="font-bold text-[#1A1A1A]/50 uppercase text-[10px] tracking-wider block">Release Year</span> {book.year || "Classic Edition"}</div>
-                <div><span className="font-bold text-[#1A1A1A]/50 uppercase text-[10px] tracking-wider block">Format binding</span> {book.binding || "Hardbound / Library Edition"}</div>
-                <div><span className="font-bold text-[#1A1A1A]/50 uppercase text-[10px] tracking-wider block">Page Extent</span> {book.pages ? `${book.pages} Pages` : "N/A"}</div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-      </div>
-    </div>
+      {articles.length > 0 && (
+        <aside className="max-w-5xl mx-auto px-6 pb-14 font-sans" aria-labelledby="read-more-heading">
+          <h2 id="read-more-heading" className="text-xs font-bold uppercase tracking-widest text-[#1A1A1A]/50 mb-3">
+            Read more about this book
+          </h2>
+          <ul className="space-y-2">
+            {articles.map((a) => (
+              <li key={a.slug}>
+                <Link href={`/articles/${a.slug}`} className="text-sm font-semibold text-[#7D5A34] underline-offset-4 hover:underline">
+                  {a.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )}
+    </>
   );
 }

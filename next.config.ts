@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
     ],
     // 30-day cache TTL for optimized images
     minimumCacheTTL: 60 * 60 * 24 * 30,
+    // Fewer, tighter srcset widths (the default list goes up to 3840w). Sanity
+    // images are served by SanityImage's custom loader straight from cdn.sanity.io.
+    deviceSizes: [360, 640, 828, 1080, 1280, 1920],
+    imageSizes: [96, 144, 240, 320, 400],
   },
 
   // Security + SEO response headers

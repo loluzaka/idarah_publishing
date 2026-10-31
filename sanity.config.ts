@@ -1,6 +1,6 @@
 import { defineConfig, type Rule as SanityRule, type ValidationContext } from 'sanity'
 import { structureTool } from 'sanity/structure'
-import { UserIcon, BookIcon, TagIcon, ClipboardIcon } from '@sanity/icons'
+import { UserIcon, BookIcon, TagIcon, ClipboardIcon, DocumentTextIcon } from '@sanity/icons'
 import { structure } from './sanity/structure'
 
 // ==========================================================================
@@ -385,6 +385,152 @@ const collectionType = {
 }
 
 // ==========================================================================
+// 3c. Article Schema Definition — SEO articles / journal (rendered at /articles)
+// ==========================================================================
+const articleType = {
+  name: 'article',
+  title: 'Articles (Journal)',
+  type: 'document',
+  icon: DocumentTextIcon,
+  fields: [
+    {
+      name: 'title',
+      title: 'Title (becomes the page <h1>)',
+      type: 'string',
+      validation: (Rule: SanityRule) => Rule.required().max(110),
+    },
+    {
+      name: 'slug',
+      title: 'Slug (the URL: /articles/<slug>)',
+      type: 'slug',
+      options: { source: 'title', maxLength: 96 },
+      validation: (Rule: SanityRule) => Rule.required(),
+    },
+    {
+      name: 'publishedAt',
+      title: 'Published At',
+      type: 'datetime',
+      description: 'Articles with a future date, or none, are not shown on the site.',
+      validation: (Rule: SanityRule) => Rule.required(),
+    },
+    {
+      name: 'excerpt',
+      title: 'Excerpt / Meta Description (150–160 characters)',
+      type: 'text',
+      rows: 3,
+      description: 'Shown on the index and used as the search-result description unless a Meta Description is set.',
+      validation: (Rule: SanityRule) => Rule.required().max(300),
+    },
+    {
+      name: 'mainImage',
+      title: 'Main Image',
+      type: 'image',
+      options: { hotspot: true },
+      fields: [{ name: 'alt', title: 'Alt text', type: 'string' }],
+      description: 'Used as the social-share image too. Recommended: 1200 × 630 px.',
+    },
+    {
+      name: 'authorName',
+      title: 'Author / Byline',
+      type: 'string',
+      initialValue: 'Idarah-i Adabiyat-i Dilli Editorial Team',
+    },
+    {
+      name: 'body',
+      title: 'Body',
+      type: 'array',
+      description: 'Use H2 for sections and H3 for sub-sections. The title is already the H1.',
+      of: [
+        {
+          type: 'block',
+          styles: [
+            { title: 'Paragraph', value: 'normal' },
+            { title: 'Heading 2', value: 'h2' },
+            { title: 'Heading 3', value: 'h3' },
+            { title: 'Quote', value: 'blockquote' },
+          ],
+          lists: [{ title: 'Bullet', value: 'bullet' }, { title: 'Numbered', value: 'number' }],
+          marks: {
+            decorators: [{ title: 'Strong', value: 'strong' }, { title: 'Emphasis', value: 'em' }],
+            annotations: [
+              {
+                name: 'link',
+                type: 'object',
+                title: 'Link',
+                fields: [{ name: 'href', type: 'url', title: 'URL', validation: (Rule: SanityRule) => Rule.uri({ allowRelative: true, scheme: ['http', 'https', 'mailto'] }) }],
+              },
+              {
+                name: 'bookLink',
+                type: 'object',
+                title: 'Link to a book (internal link)',
+                fields: [{ name: 'book', type: 'reference', title: 'Book', to: [{ type: 'book' }] }],
+              },
+            ],
+          },
+        },
+        {
+          type: 'image',
+          options: { hotspot: true },
+          fields: [
+            { name: 'alt', title: 'Alt text', type: 'string' },
+            { name: 'caption', title: 'Caption', type: 'string' },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'relatedBooks',
+      title: 'Related Books (linked from the article → product pages)',
+      type: 'array',
+      of: [{ type: 'reference', to: [{ type: 'book' }] }],
+      validation: (Rule: SanityRule) => Rule.max(8),
+    },
+    {
+      name: 'faqItems',
+      title: 'FAQ (also emitted as FAQPage structured data)',
+      type: 'array',
+      description: 'Answer each question in 40–60 words — that length is what search engines lift into featured snippets.',
+      of: [
+        {
+          type: 'object',
+          name: 'faqItem',
+          fields: [
+            { name: 'question', title: 'Question', type: 'string', validation: (Rule: SanityRule) => Rule.required() },
+            { name: 'answer', title: 'Answer (plain text)', type: 'text', rows: 3, validation: (Rule: SanityRule) => Rule.required() },
+          ],
+          preview: { select: { title: 'question', subtitle: 'answer' } },
+        },
+      ],
+    },
+    {
+      name: 'metaTitle',
+      title: 'Meta Title (optional — defaults to the title)',
+      type: 'string',
+      validation: (Rule: SanityRule) => Rule.max(60),
+    },
+    {
+      name: 'metaDescription',
+      title: 'Meta Description (optional — defaults to the excerpt)',
+      type: 'text',
+      rows: 2,
+      validation: (Rule: SanityRule) => Rule.max(160),
+    },
+    {
+      name: 'metaKeywords',
+      title: 'Meta Keywords',
+      type: 'array',
+      of: [{ type: 'string' }],
+      options: { layout: 'tags' },
+      description: 'Target phrase first, then spelling variants (e.g. "Idara Adabiyat Delhi", "Urdu manuscripts Delhi").',
+    },
+  ],
+  orderings: [{ title: 'Newest first', name: 'publishedAtDesc', by: [{ field: 'publishedAt', direction: 'desc' }] }],
+  preview: {
+    select: { title: 'title', subtitle: 'publishedAt', media: 'mainImage' },
+  },
+}
+
+// ==========================================================================
 // 3b. Bundle Schema Definition — group multiple books into a discounted set
 // ==========================================================================
 const bundleType = {
@@ -475,6 +621,6 @@ export default defineConfig({
   ],
 
   schema: {
-    types: [authorType, bookType, categoryType, collectionType, bundleType, orderType],
+    types: [authorType, bookType, categoryType, collectionType, articleType, bundleType, orderType],
   },
 })

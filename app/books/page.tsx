@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback, useSyncExtern
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Fuse from 'fuse.js';
-import { client, urlFor } from '../sanityClient';
+import { client } from '../sanityClient';
 
 const BookModal = dynamic(() => import('../components/BookModal'), { ssr: false });
 import { addRecentSearch, getRecentSearches, clearRecentSearches } from '../lib/recommendations';
@@ -12,11 +12,14 @@ import { CartItem, writeCart, clearCart as clearCartStorage } from '../lib/cart'
 import { useCart } from '../hooks/useCart';
 import { stackedAuthors, stackedShortAuthors } from '../lib/authors';
 import { buildFuseIndex, fuseSearch, SearchableBook } from '../lib/search';
-import { Library, Search, ClipboardList, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Library, Search, ClipboardList } from 'lucide-react';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { customerPrice } from '../lib/pricing';
 import type { SanityImage, CategoryRef } from '../lib/sanity-types';
 import { isPurchasable } from '../lib/stock';
+import { CoverflowCarousel } from '@/components/ui/coverflow-carousel';
+import SanityImg from '../components/SanityImage';
+import { toCoverflowSlides } from '../lib/coverflow';
 
 interface Category {
   _id: string;
@@ -33,6 +36,7 @@ interface Book {
   series?: string;
   publisher?: string;
   language?: string;
+  year?: string;
   price: number;
   originalPrice?: number;
   stock?: number;
@@ -56,11 +60,6 @@ function subscribeUrl(onChange: () => void) {
 
 function themeAnchorId(slug: string) {
   return `theme-${slug}`;
-}
-
-function scrollToTheme(slug: string) {
-  const el = document.getElementById(themeAnchorId(slug));
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 export default function BooksPage() {
@@ -89,8 +88,6 @@ export default function BooksPage() {
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [hoveredBook, setHoveredBook] = useState<string | null>(null);
 
   // Read search query from URL on mount
   useEffect(() => {
@@ -139,6 +136,7 @@ export default function BooksPage() {
             series,
             publisher,
             language,
+            year,
             coverPlaceholder,
             coverImage,
             "authors": authors[]->name,
@@ -218,12 +216,8 @@ export default function BooksPage() {
     return list;
   }, [categories, books]);
 
-  // Auto-advance slideshow
-  useEffect(() => {
-    if (themes.length <= 1) return;
-    const t = setInterval(() => setCurrentSlide(p => p + 1), 6000);
-    return () => clearInterval(t);
-  }, [themes.length]);
+  // Coverflow hero: featured titles with covers, cropped/optimised by Sanity.
+  const coverflow = useMemo(() => toCoverflowSlides(books, discountRate), [books, discountRate]);
 
   // Search results — used when user is searching
   const searchResults = useMemo<Book[]>(() => {
@@ -313,7 +307,7 @@ export default function BooksPage() {
         <button onClick={() => setSelectedBookId(book._id)} className="cursor-pointer text-left block flex-grow w-full bg-transparent">
           <div className="aspect-[3/4] bg-[#1A1A1A]/5 border border-[#1A1A1A]/10 w-full mb-4 flex items-center justify-center relative overflow-hidden">
             {book.coverImage ? (
-              <img src={urlFor(book.coverImage).width(400).url()} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <SanityImg image={book.coverImage} alt={book.title} fill sizes="(min-width: 1280px) 22vw, (min-width: 640px) 45vw, 90vw" className="object-cover group-hover:scale-105 transition-transform duration-500" />
             ) : (
               <span className="text-4xl opacity-20 font-bold">{book.coverPlaceholder || 'IAD'}</span>
             )}
@@ -338,8 +332,6 @@ export default function BooksPage() {
       </div>
     );
   };
-
-  const activeTheme = themes.length > 0 ? themes[currentSlide % themes.length] : null;
 
   return (
     <div className="min-h-screen bg-[#FBFBFA] text-[#1A1A1A] font-serif selection:bg-[#7D5A34]/20 relative">
@@ -436,240 +428,28 @@ export default function BooksPage() {
             </div>
           ) : (
             <>
-              {/* ─── Themed slideshow ─── */}
-              {themes.length > 0 && activeTheme && (
-                <section className="mb-14">
-                  {(() => {
-                    const bgUrl = activeTheme.coverImage
-  ? (() => { try { return urlFor(activeTheme.coverImage).width(1920).fit('max').url(); } catch { return null; } })()
-  : null;
-                    // 3 auto-picked book covers: prefer this theme's books, fall back to any book with a cover
-                    const themeWithCovers = activeTheme.books.filter(b => b.coverImage);
-                    const deskBooks = themeWithCovers.length > 0
-                      ? themeWithCovers.slice(0, 3)
-                      : books.filter(b => b.coverImage).slice(0, 3);
-
-                    return (
-                      <div className="relative overflow-hidden rounded-sm border border-[#1A1A1A]/10 shadow-sm">
-                        {/* Admin-controlled banner background (the desk surface) */}
-                        <div className="absolute inset-0">
-                          {bgUrl ? (
-                            <img
-                              src={bgUrl}
-                              alt=""
-                              aria-hidden="true"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div
-                              className="w-full h-full"
-                              style={{ background: 'linear-gradient(135deg, #EFE9DF 0%, #E8DDD1 40%, #EDE5D8 100%)' }}
-                            />
-                          )}
-                          {/* Soft parchment vignette so the covers pop against any banner */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-[#1A1A1A]/45 via-[#1A1A1A]/15 to-[#1A1A1A]/25" />
-                        </div>
-
-                        <div className="relative flex flex-col md:flex-row items-center gap-0 min-h-[280px] md:min-h-[340px]">
-
-                          {/* Left — 3D shelf: books tilted so both cover + spine are visible */}
-                          <div
-                            className="relative flex items-end justify-center w-full md:w-1/2 h-[260px] md:h-[360px] flex-shrink-0 px-4"
-                            style={{ perspective: '1400px', perspectiveOrigin: '55% 60%' }}
-                          >
-                            {deskBooks.length === 0 ? (
-                              <div className="flex items-center justify-center h-full">
-                                <span className="font-sans text-[10px] uppercase tracking-[0.25em] text-white/60">No publications yet</span>
-                              </div>
-                            ) : deskBooks.map((book, i) => {
-                              const SPINE_WIDTH = 18;         // px — depth/thickness of the book
-                              const BOOK_WIDTH_MD = 148;
-                              const restRotateY = 32;         // resting turn — spine visible on left
-                              const restTiltZ = [-4, 0, 3];   // gentle stagger
-                              const overlap = 78;             // px each subsequent book intrudes
-                              const isHovered = hoveredBook === book._id;
-                              const zIndex = isHovered ? 30 : (3 - i);
-                              const imgUrl = book.coverImage?.asset
-                                ? urlFor(book.coverImage).width(320).url()
-                                : null;
-
-                              // Deterministic spine colour derived from the book id — feels bookish
-                              const spineTones = [
-                                'linear-gradient(90deg, #3b2317 0%, #6b3f22 45%, #4a2c17 100%)',
-                                'linear-gradient(90deg, #2a1f16 0%, #7D5A34 45%, #3a2a1c 100%)',
-                                'linear-gradient(90deg, #241b14 0%, #5a3a24 45%, #2f2317 100%)',
-                              ];
-                              const spineBg = spineTones[book._id.charCodeAt(0) % spineTones.length];
-
-                              return (
-                                <button
-                                  key={`${activeTheme.category._id}-${book._id}`}
-                                  onClick={(e) => { e.stopPropagation(); setSelectedBookId(book._id); }}
-                                  onMouseEnter={() => setHoveredBook(book._id)}
-                                  onMouseLeave={() => setHoveredBook(null)}
-                                  aria-label={`View ${book.title}`}
-                                  className="absolute bottom-8 md:bottom-12 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7D5A34] cursor-pointer group/book"
-                                  style={{
-                                    left: '50%',
-                                    marginLeft: `${(i - 1) * overlap - BOOK_WIDTH_MD / 2}px`,
-                                    width: `${BOOK_WIDTH_MD}px`,
-                                    height: `${(BOOK_WIDTH_MD * 4) / 3}px`,
-                                    zIndex,
-                                    transformStyle: 'preserve-3d',
-                                    transform: isHovered
-                                      ? `translateY(-24px) translateZ(60px) rotateY(6deg) rotateZ(0deg) scale(1.05)`
-                                      : `rotateY(${restRotateY}deg) rotateZ(${restTiltZ[i]}deg)`,
-                                    transition: 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1)',
-                                  }}
-                                >
-                                  {/* SPINE — the thin strip attached to the left edge, extending backward */}
-                                  <div
-                                    style={{
-                                      position: 'absolute',
-                                      left: 0,
-                                      top: 0,
-                                      width: `${SPINE_WIDTH}px`,
-                                      height: '100%',
-                                      transform: `rotateY(-90deg) translateX(-${SPINE_WIDTH / 2}px)`,
-                                      transformOrigin: 'left center',
-                                      background: spineBg,
-                                      borderTopLeftRadius: '2px',
-                                      borderBottomLeftRadius: '2px',
-                                      boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.35), inset 2px 0 3px rgba(255,255,255,0.08)',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      overflow: 'hidden',
-                                    }}
-                                  >
-                                    {/* Spine text — vertical title with gold band */}
-                                    <span
-                                      style={{
-                                        writingMode: 'vertical-rl',
-                                        textOrientation: 'mixed',
-                                        transform: 'rotate(180deg)',
-                                        color: '#F5D7A1',
-                                        fontFamily: 'var(--font-playfair), Georgia, serif',
-                                        fontSize: '9px',
-                                        fontWeight: 700,
-                                        letterSpacing: '0.08em',
-                                        textShadow: '0 1px 1px rgba(0,0,0,0.6)',
-                                        padding: '10px 0',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        maxHeight: '90%',
-                                      }}
-                                    >
-                                      {book.title}
-                                    </span>
-                                    {/* Top + bottom gold bands, hardback aesthetic */}
-                                    <span style={{ position: 'absolute', top: '6px', left: '2px', right: '2px', height: '1px', background: '#F5D7A1', opacity: 0.5 }} />
-                                    <span style={{ position: 'absolute', bottom: '6px', left: '2px', right: '2px', height: '1px', background: '#F5D7A1', opacity: 0.5 }} />
-                                  </div>
-
-                                  {/* COVER — the front face of the book */}
-                                  <div
-                                    style={{
-                                      position: 'absolute',
-                                      inset: 0,
-                                      borderRadius: '2px',
-                                      overflow: 'hidden',
-                                      backfaceVisibility: 'hidden',
-                                      boxShadow: isHovered
-                                        ? '0 30px 60px rgba(0,0,0,0.55), 0 12px 24px rgba(0,0,0,0.35)'
-                                        : '0 18px 32px rgba(0,0,0,0.45), 0 4px 8px rgba(0,0,0,0.25)',
-                                      transition: 'box-shadow 0.35s ease',
-                                    }}
-                                  >
-                                    {imgUrl ? (
-                                      <img src={imgUrl} alt={book.title} className="w-full h-full object-cover" draggable={false} />
-                                    ) : (
-                                      <div className="w-full h-full bg-[#1A1A1A]/30 flex items-center justify-center">
-                                        <span className="font-serif text-2xl text-white/40 font-bold">IAD</span>
-                                      </div>
-                                    )}
-                                    {/* Subtle inner sheen — reads as a glossy hardback */}
-                                    <div style={{
-                                      position: 'absolute',
-                                      inset: 0,
-                                      background: 'linear-gradient(105deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 35%, rgba(0,0,0,0.15) 100%)',
-                                      pointerEvents: 'none',
-                                    }} />
-                                  </div>
-                                </button>
-                              );
-                            })}
-
-                            {/* Shelf shadow — grounds the books on the "desk" */}
-                            {deskBooks.length > 0 && (
-                              <div
-                                aria-hidden="true"
-                                className="pointer-events-none absolute bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 w-[70%] h-4"
-                                style={{
-                                  background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 65%)',
-                                  filter: 'blur(6px)',
-                                  zIndex: 0,
-                                }}
-                              />
-                            )}
-                          </div>
-
-                          {/* Right — editorial label + Explore CTA */}
-                          <div className="w-full md:w-1/2 px-8 pb-8 md:py-10 md:pr-12 flex flex-col justify-center text-white text-right">
-                            
-                            <h2 className="font-serif text-3xl md:text-5xl font-normal leading-tight tracking-tight mb-3">
-                              {activeTheme.category.title}
-                            </h2>
-                            <p className="font-sans text-xs md:text-sm text-white/80 leading-relaxed mb-6 max-w-md ml-auto">
-                            
-Discover works in our {activeTheme.category.title} collection. Click on any cover to view detailed publication notes, or explore the full category below
-                            </p>
-                            <button
-                              onClick={() => scrollToTheme(activeTheme.category.slug.current)}
-                              className="inline-flex items-center gap-2 self-end bg-white text-[#1A1A1A] hover:bg-[#7D5A34] hover:text-white font-sans text-xs font-bold uppercase tracking-widest px-6 py-3 rounded-sm shadow-md transition-all"
-                            >
-                              Explore
-                              <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.5} />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Prev / next arrows */}
-                        {themes.length > 1 && (
-                          <>
-                            <button
-                              onClick={() => setCurrentSlide(p => p - 1 + themes.length)}
-                              aria-label="Previous theme"
-                              className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-[#1A1A1A] shadow-md rounded-full p-2.5 transition-all z-10"
-                            >
-                              <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
-                            </button>
-                            <button
-                              onClick={() => setCurrentSlide(p => p + 1)}
-                              aria-label="Next theme"
-                              className="absolute right-3 md:right-5 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-[#1A1A1A] shadow-md rounded-full p-2.5 transition-all z-10"
-                            >
-                              <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
-                            </button>
-
-                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
-                              {themes.map((t, i) => (
-                                <button
-                                  key={t.category._id}
-                                  onClick={() => setCurrentSlide(i)}
-                                  aria-label={`Show ${t.category.title}`}
-                                  className={`h-1.5 rounded-full transition-all ${(currentSlide % themes.length) === i ? 'w-8 bg-white' : 'w-3 bg-white/50 hover:bg-white/75'}`}
-                                />
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })()}
+              {/* ─── Coverflow hero (replaces the old themed slideshow) ─── */}
+              {loading ? (
+                <section className="mb-14 h-[430px] animate-pulse rounded-sm bg-[#F3EEE4]" aria-hidden="true" />
+              ) : coverflow.slides.length > 0 ? (
+                <section
+                  className="mb-14 rounded-sm border border-[#1A1A1A]/10 bg-gradient-to-b from-[#F6F1E7] to-[#FBFBFA] px-2 pb-6 pt-6 md:px-6"
+                  aria-label="Featured publications"
+                >
+                  <div className="mb-2 text-center">
+                    <span className="font-sans text-[9px] font-bold uppercase tracking-[0.25em] text-[#7D5A34]">Featured</span>
+                    <h3 className="mt-1 font-serif text-2xl font-normal md:text-3xl">From Our Press</h3>
+                  </div>
+                  <CoverflowCarousel
+                    slides={coverflow.slides}
+                    showCaption
+                    showNavigation
+                    showPagination
+                    loop
+                    onSlideClick={(i) => setSelectedBookId(coverflow.ids[i])}
+                  />
                 </section>
-              )}
+              ) : null}
 
               {/* ─── Recent Acquisitions ─── */}
               {featuredBooks.length > 0 && (

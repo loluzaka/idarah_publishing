@@ -99,7 +99,7 @@ export default function HeaderWrapper() {
               <Image src="/logo.svg?v=4" alt="Idarah-i Adabiyat-i Dilli Emblem" fill className="object-contain mix-blend-multiply" priority />
             </div>
             <div className="flex flex-col justify-center">
-              <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif" }} className="text-3xl md:text-4xl font-bold tracking-wider uppercase text-[#1A1A1A] leading-none select-none">Idarah-i Adabiyat-i Delli</h1>
+              <p style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif" }} className="text-3xl md:text-4xl font-bold tracking-wider uppercase text-[#1A1A1A] leading-none select-none">Idarah-i Adabiyat-i Delli</p>
             </div>
           </div>
 
@@ -186,10 +186,10 @@ export default function HeaderWrapper() {
             <div className="relative w-[52px] h-[52px] flex-shrink-0 select-none bg-transparent">
               <Image src="/logo.svg?v=4" alt="Idarah-i Adabiyat-i Dilli Emblem" fill className="object-contain mix-blend-multiply" priority />
             </div>
-            <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif" }}
+            <p style={{ fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif" }}
               className="text-xs sm:text-sm md:text-base font-bold tracking-wider uppercase text-[#1A1A1A] leading-none whitespace-nowrap truncate min-w-0">
               Idarah-i Adabiyat-i Delli
-            </h1>
+            </p>
           </Link>
 
           <div className="flex items-center gap-1.5 flex-shrink-0">

@@ -55,7 +55,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, loading, logout }}>
-      {!loading && children}
+      {/* Always render: gating on `loading` left the server HTML empty and made
+          every page wait for Firebase before painting. Consumers that need to
+          know the auth state read `loading` themselves. */}
+      {children}
     </AuthContext.Provider>
   );
 }
