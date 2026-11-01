@@ -28,6 +28,7 @@ export async function generateStaticParams() {
 const BOOK_QUERY = `*[_type == "book" && _id == $id][0]{
   _id, title, series, price, originalPrice, description, pages, binding,
   publisher, year, language, stock, coverPlaceholder, coverImage,
+  isSet, volumes[]{ _key, volumeNumber, title, pages, description },
   "authors": authors[]->name,
   "category": category->{title},
   "categories": categories[]->{title, "slug": slug.current}
@@ -95,6 +96,7 @@ export default async function BookPage({ params }: Props) {
           ...book,
           coverImageUrl: sanityImageUrl(book.coverImage, 800),
           url: `${SITE.url}/books/${book._id}`,
+          volumes: book.isSet ? book.volumes : undefined,
         }}
       />
       <SchemaOrg

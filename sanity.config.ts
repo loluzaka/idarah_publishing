@@ -115,6 +115,47 @@ const bookType = {
       type: 'string',
     },
     {
+      name: 'isSet',
+      title: 'This is a multi-volume set (sold only as a whole)',
+      type: 'boolean',
+      initialValue: false,
+      description:
+        'Turn on for a boxed set / multi-volume work. List the volumes below: they are shown on the set\'s page but can never be bought separately, because they are not products themselves. Use ONE price, ONE stock count and the TOTAL weight of the whole set.',
+    },
+    {
+      name: 'volumes',
+      title: 'Volumes in this set',
+      type: 'array',
+      hidden: ({ document }: { document?: { isSet?: boolean } }) => !document?.isSet,
+      validation: (Rule: SanityRule) =>
+        Rule.custom((vols: unknown, context: ValidationContext) => {
+          const isSet = (context.document as { isSet?: boolean } | undefined)?.isSet
+          if (!isSet) return true
+          return Array.isArray(vols) && vols.length >= 2 ? true : 'A set needs at least two volumes.'
+        }),
+      of: [
+        {
+          type: 'object',
+          name: 'volume',
+          title: 'Volume',
+          fields: [
+            { name: 'volumeNumber', title: 'Volume number', type: 'number', validation: (Rule: SanityRule) => Rule.required().integer().min(1) },
+            { name: 'title', title: 'Volume title', type: 'string', description: 'e.g. "Volume I: The Early Years"' },
+            { name: 'pages', title: 'Pages', type: 'number' },
+            { name: 'coverImage', title: 'Cover / spine image', type: 'image', options: { hotspot: true } },
+            { name: 'description', title: 'What this volume covers', type: 'text', rows: 3 },
+          ],
+          preview: {
+            select: { n: 'volumeNumber', title: 'title', media: 'coverImage' },
+            prepare: ({ n, title, media }: { n?: number; title?: string; media?: unknown }) => ({
+              title: `Vol. ${n ?? '?'}${title ? ` — ${title}` : ''}`,
+              media,
+            }),
+          },
+        },
+      ],
+    },
+    {
       name: 'description',
       title: 'Editorial Synopsis',
       type: 'text',

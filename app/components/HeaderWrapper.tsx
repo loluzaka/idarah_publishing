@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/app/context/AuthContext';
-import { Home, BookOpen, Users, Info, Phone, Search, Menu, X, ShoppingCart, User } from 'lucide-react';
+import { Home, BookOpen, Users, Info, Phone, Search, Menu, X, ShoppingCart, User, ArrowRight } from 'lucide-react';
 
 function getInitials(name?: string | null): string {
   if (!name) return 'U';
@@ -13,6 +13,11 @@ function getInitials(name?: string | null): string {
   if (parts.length === 0) return 'U';
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/** A nav link is active on its own page and on pages beneath it (/books/abc → Catalogue). */
+function isActivePath(pathname: string, href: string): boolean {
+  return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export default function HeaderWrapper() {
@@ -106,24 +111,44 @@ export default function HeaderWrapper() {
           {/* Navigation Links */}
           <nav className="flex flex-wrap items-center justify-center gap-x-5 md:gap-x-7 gap-y-2 font-sans text-xs md:text-sm tracking-wide font-semibold max-w-2xl text-center">
             {NAV_LINKS.map(({ href, label, Icon }) => {
-              const isActive = pathname === href;
-              const isCatalogue = href === '/books';
-              // Catalogue is the primary shopping destination — always highlighted.
-              if (isCatalogue) {
+              const isActive = isActivePath(pathname, href);
+
+              // Catalogue is the shop: a dark "call to action" pill with a gold shimmer and a
+              // pinging dot while you're elsewhere, and a solid brown pill when you're on it.
+              if (href === '/books') {
                 return (
-                  <a key={href} href={href}
-                    className={`flex items-center gap-1.5 transition-all border-b-2 pb-0.5 ${isActive ? 'text-[#7D5A34] border-[#7D5A34]' : 'text-[#7D5A34] border-[#7D5A34]/30 hover:border-[#7D5A34]'}`}>
-                    <Icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2.5} />
+                  <Link key={href} href={href} aria-current={isActive ? 'page' : undefined}
+                    className={`nav-cta group inline-flex items-center gap-2 rounded-full py-1.5 pl-3 pr-3.5 shadow-sm transition-all duration-300 ${
+                      isActive
+                        ? 'bg-[#7D5A34] text-white ring-2 ring-[#7D5A34]/25'
+                        : 'bg-[#1A1A1A] text-[#F5E6C8] hover:-translate-y-0.5 hover:bg-[#7D5A34] hover:shadow-md'
+                    }`}>
+                    <span className="relative flex">
+                      <Icon className="h-3.5 w-3.5 flex-shrink-0 transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" strokeWidth={2.5} />
+                      {!isActive && (
+                        <span className="absolute -right-1.5 -top-1.5 flex h-2 w-2" aria-hidden="true">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#F5D7A1] opacity-75" />
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-[#F5D7A1]" />
+                        </span>
+                      )}
+                    </span>
                     <span className="font-bold uppercase tracking-wider">{label}</span>
-                  </a>
+                    {!isActive && (
+                      <ArrowRight className="-ml-0.5 h-3 w-3 transition-transform duration-300 group-hover:translate-x-0.5" strokeWidth={2.5} aria-hidden="true" />
+                    )}
+                  </Link>
                 );
               }
+
               return (
-                <a key={href} href={href}
-                  className={`flex items-center gap-1.5 transition-colors ${isActive ? 'text-[#7D5A34] font-bold' : 'text-[#1A1A1A] hover:text-[#7D5A34]'}`}>
-                  <Icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2} />
+                <Link key={href} href={href} aria-current={isActive ? 'page' : undefined}
+                  className={`group relative flex items-center gap-1.5 py-1 transition-colors ${isActive ? 'font-bold text-[#7D5A34]' : 'text-[#1A1A1A] hover:text-[#7D5A34]'}`}>
+                  <Icon className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={isActive ? 2.5 : 2} />
                   <span>{label}</span>
-                </a>
+                  {/* underline grows in on hover and stays on the current page */}
+                  <span aria-hidden="true"
+                    className={`absolute -bottom-0.5 left-0 h-0.5 bg-[#7D5A34] transition-all duration-300 ${isActive ? 'w-full' : 'w-0 group-hover:w-full'}`} />
+                </Link>
               );
             })}
             {!isBooksPage && (
@@ -218,14 +243,20 @@ export default function HeaderWrapper() {
         <div className="lg:hidden border-t border-[#1A1A1A]/10 bg-[#FBFBFA]">
           <nav className="px-4 py-2 font-sans">
             {NAV_LINKS.map(({ href, label, Icon }) => {
-              const isActive = pathname === href;
+              const isActive = isActivePath(pathname, href);
+              const isShop = href === '/books';
               return (
-                <a key={href} href={href}
-                  className={`flex items-center gap-3 px-3 py-3 text-xs font-bold uppercase tracking-widest transition-colors rounded-sm ${isActive ? 'bg-[#7D5A34]/10 text-[#7D5A34]' : 'text-[#1A1A1A] hover:bg-[#1A1A1A]/5'}`}
+                <Link key={href} href={href} aria-current={isActive ? 'page' : undefined}
+                  className={`flex items-center gap-3 rounded-sm px-3 py-3 text-xs font-bold uppercase tracking-widest transition-colors ${
+                    isShop
+                      ? `nav-cta my-1 ${isActive ? 'bg-[#7D5A34] text-white' : 'bg-[#1A1A1A] text-[#F5E6C8]'}`
+                      : isActive ? 'bg-[#7D5A34]/10 text-[#7D5A34]' : 'text-[#1A1A1A] hover:bg-[#1A1A1A]/5'
+                  }`}
                   onClick={() => setMobileMenuOpen(false)}>
-                  <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2} />
+                  <Icon className="h-4 w-4 flex-shrink-0" strokeWidth={2} />
                   <span>{label}</span>
-                </a>
+                  {isShop && !isActive && <ArrowRight className="ml-auto h-4 w-4" strokeWidth={2.5} aria-hidden="true" />}
+                </Link>
               );
             })}
 

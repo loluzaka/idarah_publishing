@@ -16,6 +16,8 @@ export interface CoverflowSourceBook {
   originalPrice?: number;
   coverImage?: SanityImage;
   categories?: CategoryRef[];
+  isSet?: boolean;
+  volumeCount?: number;
 }
 
 const slugOf = (c: CategoryRef): string => (typeof c?.slug === 'string' ? c.slug : c?.slug?.current ?? '');
@@ -48,6 +50,7 @@ export function toCoverflowSlides(
     const meta: { label: string; value: string }[] = [];
     if (b.year) meta.push({ label: 'Year', value: b.year });
     if (b.language) meta.push({ label: 'Language', value: b.language });
+    if (b.isSet && (b.volumeCount ?? 0) > 1) meta.push({ label: 'Set', value: `${b.volumeCount} volumes` });
     meta.push({ label: 'Price', value: `₹${priced.finalPrice}` });
     return {
       src,

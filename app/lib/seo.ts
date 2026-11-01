@@ -279,6 +279,8 @@ export interface BookLD {
   stock?: number | null;
   coverImageUrl?: string | null;
   url?: string;
+  /** Volumes of a multi-volume set (sold only as a whole). */
+  volumes?: { volumeNumber?: number | null; title?: string | null; pages?: number | null }[] | null;
 }
 
 /** schema.org/Book + Offer, ideal for a book detail page. */
@@ -308,6 +310,18 @@ export function bookJsonLd(book: BookLD) {
     ...(book.pages ? { numberOfPages: book.pages } : {}),
     ...(bookFormat ? { bookFormat } : {}),
     ...(book.coverImageUrl ? { image: book.coverImageUrl } : {}),
+    ...(book.volumes?.length
+      ? {
+          hasPart: [...book.volumes]
+            .sort((a, b) => (a.volumeNumber ?? 0) - (b.volumeNumber ?? 0))
+            .map((v, i) => ({
+              '@type': 'Book',
+              name: v.title?.trim() || `${book.title}, Volume ${v.volumeNumber ?? i + 1}`,
+              position: v.volumeNumber ?? i + 1,
+              ...(v.pages ? { numberOfPages: v.pages } : {}),
+            })),
+        }
+      : {}),
     offers: {
       '@type': 'Offer',
       price: book.price,

@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 import { ShoppingBag, CreditCard, Truck, MessageCircle } from 'lucide-react';
 
 const STEPS = [
@@ -58,6 +59,22 @@ export default function HowToOrderPage() {
               <p className="font-sans text-xs text-[#1A1A1A]/70 leading-relaxed">{body}</p>
             </div>
           ))}
+        </div>
+
+        {/* Full written guide (shipping tiers, payment, international orders, FAQ) */}
+        <div className="mb-14 border border-[#1A1A1A]/10 bg-white rounded-sm p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-4 justify-between">
+          <div className="max-w-xl">
+            <h2 className="font-serif text-xl font-normal leading-snug mb-1">Read the full ordering guide</h2>
+            <p className="font-sans text-xs text-[#1A1A1A]/65 leading-relaxed">
+              Shipping rates by weight in India, how international orders work, payment options and answers to common questions.
+            </p>
+          </div>
+          <Link
+            href="/articles/how-to-order-books-online-india-and-worldwide"
+            className="inline-flex items-center justify-center font-sans text-xs font-bold uppercase tracking-widest border border-[#1A1A1A] px-6 py-3.5 hover:bg-[#1A1A1A] hover:text-white transition-colors flex-shrink-0"
+          >
+            Ordering guide →
+          </Link>
         </div>
 
         {/* Bottom CTA panel */}

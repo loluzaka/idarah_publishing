@@ -21,6 +21,8 @@ export interface BookDetail {
   year?: string;
   language?: string;
   stock?: number;
+  isSet?: boolean;
+  volumes?: { _key?: string; volumeNumber?: number; title?: string; pages?: number; description?: string }[] | null;
   category?: { title: string } | null;
   categories?: { title: string; slug?: string }[] | null;
   coverPlaceholder?: string;
@@ -118,6 +120,30 @@ export default function BookDetailClient({ book }: { book: BookDetail }) {
                 {book.description || "Detailed source monograph registry data and translation indexes for this volume are currently being annotated by our editorial board."}
               </p>
             </div>
+
+            {/* MULTI-VOLUME SET: volumes are shown here but sold only together */}
+            {book.isSet && (book.volumes?.length ?? 0) > 0 && (
+              <div className="border border-[#7D5A34]/25 bg-[#7D5A34]/[0.04] p-5">
+                <h3 className="font-sans text-xs font-bold tracking-widest uppercase text-[#7D5A34]">
+                  Complete set · {book.volumes!.length} volumes
+                </h3>
+                <p className="mt-1 mb-4 font-sans text-xs text-[#1A1A1A]/55">Sold as a complete set only. Volumes are not sold individually.</p>
+                <ol className="space-y-3">
+                  {[...book.volumes!].sort((a, b) => (a.volumeNumber ?? 0) - (b.volumeNumber ?? 0)).map((v, i) => (
+                    <li key={v._key ?? i} className="flex items-start gap-3 font-sans">
+                      <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#7D5A34] text-xs font-bold text-white">
+                        {v.volumeNumber ?? i + 1}
+                      </span>
+                      <span className="text-sm leading-snug">
+                        <span className="font-bold">{v.title || `Volume ${v.volumeNumber ?? i + 1}`}</span>
+                        {v.pages ? <span className="text-[#1A1A1A]/50"> · {v.pages} pages</span> : null}
+                        {v.description ? <span className="mt-0.5 block text-[#1A1A1A]/65">{v.description}</span> : null}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
 
             {/* DETAILED TECHNICAL MONOGRAPH SHEET */}
             <div className="pt-4 space-y-3">

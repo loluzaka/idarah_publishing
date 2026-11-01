@@ -84,3 +84,30 @@ select:focus-visible,
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: rgba(125,90,52,0.5);
 }
+
+
+/* ── Header: catalogue call-to-action ─────────────────────────────────────── */
+
+/* A soft gold glint sweeps across the Catalogue pill every few seconds. */
+.nav-cta {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.nav-cta::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(245, 215, 161, 0.5), transparent);
+  transform: translateX(-130%) skewX(-20deg);
+  animation: nav-glint 4.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+@keyframes nav-glint {
+  0%, 55% { transform: translateX(-130%) skewX(-20deg); }
+  85%, 100% { transform: translateX(330%) skewX(-20deg); }
+}

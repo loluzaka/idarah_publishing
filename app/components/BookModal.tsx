@@ -38,6 +38,8 @@ interface BookDetail {
   categories?: Category[];
   contentsImages?: SanityImage[];
   previewImages?: SanityImage[];
+  isSet?: boolean;
+  volumes?: { _key?: string; volumeNumber?: number; title?: string; pages?: number; coverImage?: SanityImage; description?: string }[];
 }
 
 interface RelatedBook {
@@ -324,6 +326,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
       originalPrice: book.originalPrice,
       stock: book.stock,
       coverImageUrl,
+      volumes: book.isSet ? book.volumes : undefined,
     })
   );
 
@@ -497,6 +500,30 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                 <p className="italic text-[#1A1A1A]/50">This critical text represents a classic manuscript within the comprehensive catalog collections of the Idarah-i Adabiyat-i Dilli archive, fully associated with Jayyad Press editorial outputs.</p>
               )}
             </div>
+
+            {/* Multi-volume set: the volumes are listed here but sold only together */}
+            {book.isSet && (book.volumes?.length ?? 0) > 0 && (
+              <div className="border border-[#7D5A34]/25 bg-[#7D5A34]/[0.04] p-4 mb-6">
+                <h4 className="font-sans text-[10px] tracking-widest uppercase font-bold text-[#7D5A34] mb-1">
+                  Complete set · {book.volumes!.length} volumes
+                </h4>
+                <p className="font-sans text-[10px] text-[#1A1A1A]/55 mb-3">Sold as a complete set only — volumes are not sold individually.</p>
+                <ol className="space-y-2">
+                  {[...book.volumes!].sort((a, b) => (a.volumeNumber ?? 0) - (b.volumeNumber ?? 0)).map((v, i) => (
+                    <li key={v._key ?? i} className="flex items-start gap-3 font-sans">
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#7D5A34] text-[10px] font-bold text-white">
+                        {v.volumeNumber ?? i + 1}
+                      </span>
+                      <span className="min-w-0 text-[11px] leading-snug">
+                        <span className="font-bold text-[#1A1A1A]">{v.title || `Volume ${v.volumeNumber ?? i + 1}`}</span>
+                        {v.pages ? <span className="text-[#1A1A1A]/50"> · {v.pages} pp.</span> : null}
+                        {v.description ? <span className="mt-0.5 block text-[#1A1A1A]/65">{v.description}</span> : null}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
 
             {/* Specs grid */}
             <div className="grid grid-cols-2 gap-4 bg-[#1A1A1A]/[0.02] border border-[#1A1A1A]/5 p-4 mb-6">

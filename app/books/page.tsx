@@ -37,6 +37,8 @@ interface Book {
   publisher?: string;
   language?: string;
   year?: string;
+  isSet?: boolean;
+  volumeCount?: number;
   price: number;
   originalPrice?: number;
   stock?: number;
@@ -137,6 +139,8 @@ export default function BooksPage() {
             publisher,
             language,
             year,
+            isSet,
+            "volumeCount": count(volumes),
             coverPlaceholder,
             coverImage,
             "authors": authors[]->name,
@@ -313,6 +317,11 @@ export default function BooksPage() {
             )}
             {book.categories?.some((c) => c?.slug === 'new-arrivals') && (
               <span className="absolute top-2 left-2 font-sans text-[8px] font-bold uppercase tracking-wider bg-white/95 text-[#7D5A34] border border-[#7D5A34]/20 px-1.5 py-0.5 rounded shadow-xs">New</span>
+            )}
+            {book.isSet && (book.volumeCount ?? 0) > 1 && (
+              <span className="absolute bottom-2 left-2 font-sans text-[8px] font-bold uppercase tracking-wider bg-[#7D5A34] text-white px-1.5 py-0.5 rounded shadow-xs">
+                {book.volumeCount}-Volume Set
+              </span>
             )}
           </div>
           <h4 className="text-base font-bold leading-snug group-hover:text-[#7D5A34] transition-colors">{book.title}</h4>

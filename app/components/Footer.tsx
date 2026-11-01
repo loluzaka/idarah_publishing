@@ -116,14 +116,22 @@ export default function Footer() {
             rights reserved.
           </p>
           <p className="text-[10px] font-sans text-[#FBFBFA]/40 tracking-wide italic">
-            vibecodih with luv on{" "}
-            <span className="text-[#7D5A34] font-bold not-italic">
-              RUNNER AI
-            </span>{" "}  by{" "}
+            vibecodih with ❤️ by{" "}
             <span className="text-[#7D5A34] font-semibold not-italic">
               Omar Nixton
             </span>{" "}
-            🖤
+            on{" "}
+            <span className="text-[#7D5A34] font-bold not-italic">
+              Runner AI
+            </span>{" "}
+            and{" "}
+            <span className="text-[#7D5A34] font-bold not-italic">
+              Claude
+            </span>
+            , courtesy of{" "}
+            <span className="text-[#7D5A34] font-semibold not-italic">
+              PlotArmor
+            </span>
           </p>
         </div>
       </div>
