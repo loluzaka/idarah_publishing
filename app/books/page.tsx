@@ -456,7 +456,7 @@ export default function BooksPage() {
                 <section className="mb-14 h-[430px] animate-pulse rounded-sm bg-[#F3EEE4]" aria-hidden="true" />
               ) : coverflow.slides.length > 0 ? (
                 <section
-                  className="mb-14 rounded-sm border border-[#1A1A1A]/10 bg-gradient-to-b from-[#F6F1E7] to-[#FBFBFA] px-2 pb-6 pt-6 md:px-6"
+                  className="mb-14 overflow-x-clip rounded-sm border border-[#1A1A1A]/10 bg-gradient-to-b from-[#F6F1E7] to-[#FBFBFA] px-2 pb-6 pt-6 md:px-6"
                   aria-label="Featured publications"
                 >
                   <div className="mb-2 text-center">

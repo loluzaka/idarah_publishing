@@ -444,7 +444,13 @@ const hasHeroSlides = heroSlides.length > 0;
                   <ChevronRight className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.5} />
                 </button>
 
-                <div className="absolute bottom-10 md:bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
+                {/* Phones: with many slides a row of dots is wider than the screen, so show a counter. */}
+                {heroSlides.length > 8 && (
+                  <div className="md:hidden absolute bottom-10 left-1/2 -translate-x-1/2 rounded-full bg-[#1A1A1A]/70 px-2.5 py-0.5 font-sans text-[10px] font-bold tracking-wider text-white">
+                    {(currentSlide % heroSlides.length) + 1} / {heroSlides.length}
+                  </div>
+                )}
+                <div className={`absolute bottom-10 md:bottom-3 left-1/2 -translate-x-1/2 items-center gap-2 ${heroSlides.length > 8 ? 'hidden md:flex' : 'flex'}`}>
                   {heroSlides.map((_, i) => (
                     <button
                       key={i}

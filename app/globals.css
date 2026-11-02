@@ -6,6 +6,14 @@
   --font-arabic: var(--font-amiri), serif;
 }
 
+/* Nothing may widen the page sideways. On Android Chrome a page that overflows
+   horizontally also widens full-screen overlays (e.g. the book popup) past the
+   screen, cutting them off. `clip` (unlike `hidden`) keeps position: sticky working. */
+html,
+body {
+  overflow-x: clip;
+}
+
 /* ── Accessibility ────────────────────────────────────────────────────────── */
 
 *:focus-visible {
