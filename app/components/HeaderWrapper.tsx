@@ -236,6 +236,33 @@ export default function HeaderWrapper() {
             </button>
           </div>
         </div>
+
+        {/* Always-visible page links, so nobody has to find the ☰ to discover the shop. */}
+        <nav aria-label="Main" className="-mx-4 mt-2 flex items-center justify-between gap-1 overflow-x-auto border-t border-[#1A1A1A]/10 px-3 pt-2 font-sans [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {NAV_LINKS.map(({ href, label }) => {
+            const isActive = isActivePath(pathname, href);
+            const short = label.replace(/ Us$/, '');
+            if (href === '/books') {
+              return (
+                <Link key={href} href={href} aria-current={isActive ? 'page' : undefined}
+                  className={`nav-cta inline-flex flex-shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${
+                    isActive ? 'bg-[#7D5A34] text-white' : 'bg-[#1A1A1A] text-[#F5E6C8]'
+                  }`}>
+                  {label}
+                  {!isActive && <ArrowRight className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />}
+                </Link>
+              );
+            }
+            return (
+              <Link key={href} href={href} aria-current={isActive ? 'page' : undefined}
+                className={`flex-shrink-0 border-b-2 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                  isActive ? 'border-[#7D5A34] text-[#7D5A34]' : 'border-transparent text-[#1A1A1A]/70'
+                }`}>
+                {short}
+              </Link>
+            );
+          })}
+        </nav>
       </header>
 
       {/* Mobile dropdown menu — full-width panel beneath the header */}

@@ -20,6 +20,7 @@ import { isPurchasable } from '../lib/stock';
 import { CoverflowCarousel } from '@/components/ui/coverflow-carousel';
 import SanityImg from '../components/SanityImage';
 import { toCoverflowSlides } from '../lib/coverflow';
+import BundlesSection, { type Bundle, type BundleBook } from '../components/BundlesSection';
 
 interface Category {
   _id: string;
@@ -38,6 +39,7 @@ interface Book {
   language?: string;
   year?: string;
   isSet?: boolean;
+  featuredOrder?: number;
   volumeCount?: number;
   price: number;
   originalPrice?: number;
@@ -71,6 +73,7 @@ export default function BooksPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [bookCollectionMap, setBookCollectionMap] = useState<Map<string, string[]>>(new Map());
+  const [bundles, setBundles] = useState<Bundle[]>([]);
 
   // The ?q= in the URL seeds the search box; once the user types, their text wins.
   const urlQuery = useSyncExternalStore(
@@ -127,7 +130,7 @@ export default function BooksPage() {
 
     const fetchData = async () => {
       try {
-        const [categoryData, bookData, collectionData] = await Promise.all([
+        const [categoryData, bookData, collectionData, bundleData] = await Promise.all([
           client.fetch(`*[_type == "category"]{_id, title, slug, bannerImage}`),
           client.fetch(`*[_type == "book"]{
             _id,
@@ -140,6 +143,7 @@ export default function BooksPage() {
             language,
             year,
             isSet,
+            featuredOrder,
             "volumeCount": count(volumes),
             coverPlaceholder,
             coverImage,
@@ -151,10 +155,20 @@ export default function BooksPage() {
             _id, title,
             "bookIds": books[]->_id
           }`),
+          client.fetch(`*[_type == "bundle" && active != false] | order(priority asc){
+            _id, name, description, coverImage,
+            "books": books[]->{_id, title, price, originalPrice, stock, coverImage, "authors": authors[]->name}
+          }`),
         ]);
 
         setCategories(categoryData ?? []);
         setBooks(bookData ?? []);
+        // Drop dangling references and bundles that no longer hold at least two books.
+        setBundles(
+          ((bundleData ?? []) as Bundle[])
+            .map((b) => ({ ...b, books: (b.books ?? []).filter((x) => x?._id) }))
+            .filter((b) => b.books.length >= 2)
+        );
 
         const map = new Map<string, string[]>();
         for (const col of (collectionData ?? [])) {
@@ -506,6 +520,19 @@ export default function BooksPage() {
                   </section>
                 ))
               )}
+
+              {/* ─── Bundles & Sets: a quiet shelf at the foot of the catalogue ─── */}
+              <BundlesSection
+                bundles={bundles}
+                discountRate={discountRate}
+                onAddAll={(bundleBooks: BundleBook[]) => {
+                  for (const bb of bundleBooks) {
+                    const full = books.find((b) => b._id === bb._id);
+                    if (full) addToCart(full);
+                  }
+                }}
+                onOpenBook={setSelectedBookId}
+              />
             </>
           )}
         </div>

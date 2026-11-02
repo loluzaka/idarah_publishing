@@ -429,20 +429,94 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
         {/* ── Right: Metadata, Pricing, Reviews, Related ── */}
         <div className="w-full md:w-2/5 flex flex-col overflow-y-auto bg-[#FBFBFA]">
 
-          {/* Mobile-only cover image + drag indicator */}
-          <div className="md:hidden flex flex-col items-center pt-3 pb-2 flex-shrink-0">
-            <div className="w-10 h-1 bg-[#1A1A1A]/20 rounded-full mb-3" />
-            {book.coverImage?.asset && (
-              <img
-                src={getImageUrl(book.coverImage, 120) || ''}
-                alt={book.title}
-                className="h-28 w-auto object-contain rounded-sm shadow-md"
-              />
-            )}
+          {/* Mobile-only drag indicator (the gallery lives in the scrolling area below) */}
+          <div className="md:hidden flex flex-col items-center pt-3 pb-1 flex-shrink-0">
+            <div className="w-10 h-1 bg-[#1A1A1A]/20 rounded-full" />
           </div>
 
           {/* Scrollable content area */}
           <div className="flex-grow px-5 py-4 md:p-8 overflow-y-auto">
+
+            {/* Mobile gallery: cover, contents pages and "peek inside" (the desktop viewport is hidden below md) */}
+            {(book.coverImage?.asset || hasContents || hasPreview) && (
+              <div className="md:hidden -mx-5 -mt-4 mb-5 border-b border-[#1A1A1A]/10 bg-[#1A1A1A]/5">
+                {hasPreview && (
+                  <div className="flex gap-1 p-2 font-sans text-[10px] font-bold uppercase tracking-wider">
+                    <button
+                      onClick={() => setActiveTab('contents')}
+                      className={`flex-1 border px-2 py-2 transition-colors ${activeTab === 'contents' ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white' : 'border-[#1A1A1A]/15 text-[#1A1A1A]/60'}`}
+                    >
+                      Cover &amp; Contents ({(book.coverImage?.asset ? 1 : 0) + validContentsImages.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('preview')}
+                      className={`flex-1 border px-2 py-2 transition-colors ${activeTab === 'preview' ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white' : 'border-[#1A1A1A]/15 text-[#1A1A1A]/60'}`}
+                    >
+                      Peek Inside ({validPreviewImages.length})
+                    </button>
+                  </div>
+                )}
+
+                {(activeTab === 'contents' || !hasPreview) && (
+                  <>
+                    <div className="relative mx-auto mt-2 aspect-[3/4] w-full max-h-[58vh] bg-white">
+                      {activeViewportImageUrl ? (
+                        <ZoomableImage key={activeViewportImageUrl} src={activeViewportImageUrl} alt={`${book.title} — cover and contents`} />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <span className="font-serif text-5xl font-bold opacity-20">{book.coverPlaceholder || 'IAD'}</span>
+                        </div>
+                      )}
+                    </div>
+                    {((book.coverImage?.asset ? 1 : 0) + validContentsImages.length) > 1 && (
+                      <div className="flex gap-2 overflow-x-auto p-2">
+                        {book.coverImage?.asset && (
+                          <button
+                            onClick={() => { const u = getImageUrl(book.coverImage); if (u) setActiveViewportImageUrl(u); }}
+                            aria-label="Show cover"
+                            className={`aspect-[3/4] w-14 flex-shrink-0 overflow-hidden rounded-sm border transition-all ${activeViewportImageUrl === getImageUrl(book.coverImage) ? 'border-[#7D5A34] ring-2 ring-[#7D5A34]/25' : 'border-[#1A1A1A]/15 opacity-70'}`}
+                          >
+                            <img src={getImageUrl(book.coverImage, 120) || ''} alt="" className="h-full w-full object-cover" />
+                          </button>
+                        )}
+                        {validContentsImages.map((img, idx: number) => {
+                          const imgUrl = getImageUrl(img);
+                          const thumbUrl = getImageUrl(img, 120);
+                          if (!imgUrl || !thumbUrl) return null;
+                          return (
+                            <button
+                              key={`m-mini-${idx}`}
+                              onClick={() => setActiveViewportImageUrl(imgUrl)}
+                              aria-label={`Show contents page ${idx + 1}`}
+                              className={`aspect-[3/4] w-14 flex-shrink-0 overflow-hidden rounded-sm border transition-all ${activeViewportImageUrl === imgUrl ? 'border-[#7D5A34] ring-2 ring-[#7D5A34]/25' : 'border-[#1A1A1A]/15 opacity-70'}`}
+                            >
+                              <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {activeTab === 'preview' && hasPreview && (
+                  <>
+                    <div className="relative mx-auto mt-2 aspect-[3/4] w-full max-h-[58vh] bg-white">
+                      <ZoomableImage
+                        key={`m-preview-${activePreviewIndex}`}
+                        src={getImageUrl(validPreviewImages[activePreviewIndex], 1400) || ''}
+                        alt={`Preview page ${activePreviewIndex + 1}`}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between px-3 py-3 font-sans">
+                      <button disabled={activePreviewIndex === 0} onClick={() => setActivePreviewIndex(p => p - 1)} className="border border-[#1A1A1A]/20 px-3 py-2 text-[10px] font-bold uppercase tracking-widest disabled:pointer-events-none disabled:opacity-30">← Prev</button>
+                      <span className="text-[11px] font-semibold text-[#1A1A1A]/60">{activePreviewIndex + 1} of {validPreviewImages.length}</span>
+                      <button disabled={activePreviewIndex === validPreviewImages.length - 1} onClick={() => setActivePreviewIndex(p => p + 1)} className="border border-[#1A1A1A]/20 px-3 py-2 text-[10px] font-bold uppercase tracking-widest disabled:pointer-events-none disabled:opacity-30">Next →</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Title + Wishlist */}
             <div className="flex justify-between items-start border-b border-[#1A1A1A]/10 pb-4 mb-6">

@@ -110,6 +110,14 @@ const bookType = {
           }),
     },
     {
+      name: 'featuredOrder',
+      title: 'Catalogue slider position',
+      type: 'number',
+      description:
+        'Position in the Catalogue cover slider: 1 shows first, 2 second, and so on. Books with a number appear before all others; leave empty to let the book follow the automatic order (new arrivals, then bestsellers).',
+      validation: (Rule: SanityRule) => Rule.integer().min(1),
+    },
+    {
       name: 'series',
       title: 'Series / Volume Note',
       type: 'string',
@@ -593,6 +601,8 @@ const bundleType = {
     {
       name: 'discountType',
       title: 'Discount Type',
+      description:
+        'Not applied on the website yet: the storefront lists the bundle and adds its books to the cart at their normal prices. Keep this on "None" for now.',
       type: 'string',
       options: {
         list: [

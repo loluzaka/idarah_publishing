@@ -17,13 +17,19 @@ export interface CoverflowSourceBook {
   coverImage?: SanityImage;
   categories?: CategoryRef[];
   isSet?: boolean;
+  /** Hand-picked slider position set in Studio (1 = first). */
+  featuredOrder?: number | null;
   volumeCount?: number;
 }
 
 const slugOf = (c: CategoryRef): string => (typeof c?.slug === 'string' ? c.slug : c?.slug?.current ?? '');
 
-/** Featured titles first: new arrivals, then bestsellers, then the rest. */
+/**
+ * Hand-placed books (a "Catalogue slider position" in Studio) come first, in that
+ * order. The rest follow automatically: new arrivals, then bestsellers, then the rest.
+ */
 function rank(b: CoverflowSourceBook): number {
+  if (typeof b.featuredOrder === 'number') return -1;
   const slugs = (b.categories ?? []).map(slugOf);
   return slugs.includes('new-arrivals') ? 0 : slugs.includes('bestsellers') ? 1 : 2;
 }
@@ -42,7 +48,12 @@ export function toCoverflowSlides(
   const picked = books
     .map((b, i) => ({ b, i, src: sanityImageUrl(b.coverImage, 520, 728) }))
     .filter((x): x is { b: CoverflowSourceBook; i: number; src: string } => !!x.src)
-    .sort((x, y) => rank(x.b) - rank(y.b) || x.i - y.i) // stable within a rank
+    .sort(
+      (x, y) =>
+        rank(x.b) - rank(y.b) ||
+        (x.b.featuredOrder ?? 0) - (y.b.featuredOrder ?? 0) ||
+        x.i - y.i // stable within a rank
+    )
     .slice(0, limit);
 
   const slides = picked.map(({ b, src }): CoverflowSlide => {
