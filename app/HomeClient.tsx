@@ -10,6 +10,7 @@ import {
   getRecentlyViewedBooks,
   getRecentSearches,
   getRecommendations,
+  scoreBook,
 } from './lib/recommendations';
 import { CartItem, writeCart, clearCart as clearCartStorage } from './lib/cart';
 import { useCart } from './hooks/useCart';
@@ -90,6 +91,8 @@ interface HeroSlide {
 
 // Display caps for homepage recommendation sections
 const FOR_YOU_LIMIT = 3;
+// How many of the visitor's most recently opened books get their promo slides first.
+const RECENT_CLICK_LIMIT = 5;
 
 interface HomeClientProps {
   /** Fetched on the server (ISR) so the first paint already has content. */
@@ -160,33 +163,15 @@ export default function HomeClient({ initialBooks, initialCollections }: HomeCli
     [featuredCollections, books, viewedBooks, recentSearches]
   );
 // ── Hero slides: Priority System ───────────────────────────────────
-//   1. Personalised / Click-history book promo slides (when user has interaction history).
-//   2. Default book promo slides (all books with homepageSlides uploaded, sorted by priority).
-//   3. Featured collection banners (if no book promo slides exist).
-//   4. Raw book covers fallback.
+//   1. Book promo slides (every book with homepageSlides uploaded). Studio
+//      priority sets the base order; a visitor with history gets it re-ordered:
+//        a. books they opened most recently,
+//        b. books related to what they opened/searched (same category, author...),
+//        c. everything else, in Studio order.
+//   2. Featured collection banners (if no book promo slides exist).
+//   3. Raw book covers fallback.
 const heroSlides = useMemo<HeroSlide[]>(() => {
-  // Level 1: Personalised slides if the user has click/view history
-  if (hasHistory && rankedRecommendations.length > 0) {
-    const personalised: HeroSlide[] = [];
-    for (const book of rankedRecommendations) {
-      for (const slide of book.homepageSlides ?? []) {
-        if (slide?.image) {
-          personalised.push({
-            key: `book-${book._id}-${slide._key ?? personalised.length}`,
-            image: slide.image,
-            mobileImage: slide.mobileImage?.asset ? slide.mobileImage : undefined,
-            bookId: book._id,
-            alt: slide.heading || book.title || 'Personalised recommendation',
-            priority: slide.priority,
-          });
-        }
-      }
-    }
-    personalised.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
-    if (personalised.length > 0) return personalised;
-  }
-
-  // Level 2: Default promotional book slides from ALL books
+  // Level 1: promotional book slides from ALL books, Studio order first
   const defaultBookSlides: HeroSlide[] = [];
   for (const book of books) {
     for (const slide of book.homepageSlides ?? []) {
@@ -203,9 +188,32 @@ const heroSlides = useMemo<HeroSlide[]>(() => {
     }
   }
   defaultBookSlides.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
-  if (defaultBookSlides.length > 0) return defaultBookSlides;
+  if (defaultBookSlides.length > 0) {
+    if (!hasHistory) return defaultBookSlides;
 
-  // Level 3: Featured collection banners
+    // Personalise: tier 0 = recently opened, tier 1 = related, tier 2 = rest.
+    // Array.sort is stable, so ties keep the Studio order set above.
+    const recentIds = viewedBooks.slice(0, RECENT_CLICK_LIMIT).map((b) => b._id);
+    const relatedScore = new Map<string, number>();
+    for (const book of books) {
+      relatedScore.set(book._id, scoreBook(book, viewedBooks, recentSearches));
+    }
+    const tierOf = (id?: string) => {
+      if (!id) return 2;
+      if (recentIds.includes(id)) return 0;
+      return (relatedScore.get(id) ?? 0) > 0 ? 1 : 2;
+    };
+    return [...defaultBookSlides].sort((a, b) => {
+      const ta = tierOf(a.bookId);
+      const tb = tierOf(b.bookId);
+      if (ta !== tb) return ta - tb;
+      if (ta === 0) return recentIds.indexOf(a.bookId!) - recentIds.indexOf(b.bookId!);
+      if (ta === 1) return (relatedScore.get(b.bookId!) ?? 0) - (relatedScore.get(a.bookId!) ?? 0);
+      return 0;
+    });
+  }
+
+  // Level 2: Featured collection banners
   const collectionSlides: HeroSlide[] = (featuredCollections ?? []).flatMap(col =>
     col?.bannerImage
       ? [{
@@ -220,7 +228,7 @@ const heroSlides = useMemo<HeroSlide[]>(() => {
   collectionSlides.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
   if (collectionSlides.length > 0) return collectionSlides;
 
-  // Level 4: Fallback to regular book covers
+  // Level 3: Fallback to regular book covers
   return books.slice(0, 4).flatMap(b =>
     b.coverImage
       ? [{
@@ -231,7 +239,7 @@ const heroSlides = useMemo<HeroSlide[]>(() => {
         }]
       : []
   );
-}, [rankedRecommendations, featuredCollections, books, hasHistory]);
+}, [featuredCollections, books, hasHistory, viewedBooks, recentSearches]);
 
 const hasHeroSlides = heroSlides.length > 0;
 
