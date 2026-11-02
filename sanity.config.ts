@@ -280,6 +280,14 @@ const bookType = {
               validation: (Rule: SanityRule) => Rule.required().error('A slide image is required.'),
             },
             {
+              name: 'mobileImage',
+              title: 'Phone Image (optional)',
+              type: 'image',
+              options: { hotspot: true },
+              description:
+                'Optional. A taller version of this slide for phones, e.g. 1080 × 1080 px (square) or 1080 × 1350 px (4:5). Phones show it uncropped and much larger than the wide banner. Leave empty to show the wide banner on phones too.',
+            },
+            {
               name: 'heading',
               title: 'Heading',
               type: 'string',

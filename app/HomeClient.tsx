@@ -52,6 +52,7 @@ export interface Collection {
 interface HomepageSlide {
   _key?: string;
   image?: SanityImage;
+  mobileImage?: SanityImage;
   heading?: string;
   subheading?: string;
   buttonText?: string;
@@ -79,6 +80,8 @@ export interface Book {
 interface HeroSlide {
   key: string;
   image: SanityImage;
+  /** Optional phone-shaped artwork; phones show it instead of the wide banner. */
+  mobileImage?: SanityImage;
   href?: string;
   bookId?: string;
   alt: string;
@@ -171,6 +174,7 @@ const heroSlides = useMemo<HeroSlide[]>(() => {
           personalised.push({
             key: `book-${book._id}-${slide._key ?? personalised.length}`,
             image: slide.image,
+            mobileImage: slide.mobileImage?.asset ? slide.mobileImage : undefined,
             bookId: book._id,
             alt: slide.heading || book.title || 'Personalised recommendation',
             priority: slide.priority,
@@ -190,6 +194,7 @@ const heroSlides = useMemo<HeroSlide[]>(() => {
         defaultBookSlides.push({
           key: `book-${book._id}-${slide._key ?? defaultBookSlides.length}`,
           image: slide.image,
+          mobileImage: slide.mobileImage?.asset ? slide.mobileImage : undefined,
           bookId: book._id,
           alt: slide.heading || book.title || 'Featured publication',
           priority: slide.priority,
@@ -353,21 +358,50 @@ const hasHeroSlides = heroSlides.length > 0;
           <div className="max-w-7xl mx-auto relative">
             {(() => {
               // LCP element: preloaded + high priority. Sizes capped at the 7xl container.
+              // With a phone-shaped image, phones get that and wide screens keep the banner
+              // (so only the banner is preloaded, and only when there is no phone variant).
+              const mobileArt = activeSlide.mobileImage;
+              const art = (
+                <>
+                  <SanityImg
+                    image={activeSlide.image}
+                    alt={activeSlide.alt}
+                    preload={currentSlide === 0 && !mobileArt}
+                    sizes="(min-width: 1280px) 1280px, 100vw"
+                    className={`w-full h-auto max-h-[280px] md:max-h-[340px] object-contain transition-opacity duration-500 group-hover:opacity-95 ${mobileArt ? 'hidden md:block' : ''}`}
+                  />
+                  {mobileArt && (
+                    <SanityImg
+                      image={mobileArt}
+                      alt={activeSlide.alt}
+                      sizes="100vw"
+                      className="md:hidden w-full h-auto object-contain"
+                    />
+                  )}
+                </>
+              );
+
+              // Tells phone users the slide is a button: a slim bar under the (uncropped) banner.
+              // Wide screens show the banner on its own.
+              const ctaLabel = activeSlide.bookId ? 'View Book' : activeSlide.href ? 'View Collection' : null;
               const inner = (
-                <SanityImg
-                  image={activeSlide.image}
-                  alt={activeSlide.alt}
-                  preload={currentSlide === 0}
-                  sizes="(min-width: 1280px) 1280px, 100vw"
-                  className="w-full h-auto max-h-[280px] md:max-h-[340px] object-contain transition-opacity duration-500 group-hover:opacity-95"
-                />
+                <>
+                  {art}
+                  {ctaLabel && (
+                    <span aria-hidden="true" className="flex items-center justify-center bg-[#1A1A1A] px-3 py-1 font-sans md:hidden">
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-[#7D5A34] px-3 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+                        Tap to {activeSlide.bookId ? 'view' : 'open'} <ChevronRight className="h-3 w-3" strokeWidth={2.5} />
+                      </span>
+                    </span>
+                  )}
+                </>
               );
               if (activeSlide.bookId) {
                 return (
                   <button
                     onClick={() => setSelectedBookId(activeSlide.bookId!)}
-                    className="block w-full group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7D5A34]"
-                    aria-label={activeSlide.alt}
+                    className="relative block w-full group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7D5A34]"
+                    aria-label={`${activeSlide.alt} — view book details`}
                   >
                     {inner}
                   </button>
@@ -377,14 +411,14 @@ const hasHeroSlides = heroSlides.length > 0;
                 return (
                   <a
                     href={activeSlide.href}
-                    className="block w-full group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7D5A34]"
-                    aria-label={activeSlide.alt}
+                    className="relative block w-full group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7D5A34]"
+                    aria-label={`${activeSlide.alt} — view collection`}
                   >
                     {inner}
                   </a>
                 );
               }
-              return <div className="block w-full group">{inner}</div>;
+              return <div className="block w-full group">{art}</div>;
             })()}
 
             {heroSlides.length > 1 && (
@@ -392,19 +426,19 @@ const hasHeroSlides = heroSlides.length > 0;
                 <button
                   onClick={() => setCurrentSlide(p => p - 1 + heroSlides.length)}
                   aria-label="Previous slide"
-                  className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 bg-[#1A1A1A]/75 md:bg-[#1A1A1A] hover:bg-[#7D5A34] text-white shadow-md rounded-full p-1.5 md:p-2.5 transition-all cursor-pointer z-10 focus:outline-none"
+                  className="absolute left-2 md:left-4 top-[calc(50%-14px)] md:top-1/2 -translate-y-1/2bg-[#1A1A1A]/75 md:bg-[#1A1A1A] hover:bg-[#7D5A34] text-white shadow-md rounded-full p-1.5 md:p-2.5 transition-all cursor-pointer z-10 focus:outline-none"
                 >
                   <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.5} />
                 </button>
                 <button
                   onClick={() => setCurrentSlide(p => p + 1)}
                   aria-label="Next slide"
-                  className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 bg-[#1A1A1A]/75 md:bg-[#1A1A1A] hover:bg-[#7D5A34] text-white shadow-md rounded-full p-1.5 md:p-2.5 transition-all cursor-pointer z-10 focus:outline-none"
+                  className="absolute right-2 md:right-4 top-[calc(50%-14px)] md:top-1/2 -translate-y-1/2bg-[#1A1A1A]/75 md:bg-[#1A1A1A] hover:bg-[#7D5A34] text-white shadow-md rounded-full p-1.5 md:p-2.5 transition-all cursor-pointer z-10 focus:outline-none"
                 >
                   <ChevronRight className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.5} />
                 </button>
 
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
+                <div className="absolute bottom-10 md:bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
                   {heroSlides.map((_, i) => (
                     <button
                       key={i}
