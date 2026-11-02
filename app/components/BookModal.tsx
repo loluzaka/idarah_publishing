@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { client, urlFor } from '@/app/sanityClient';
 import type { SanityImage } from '@/app/lib/sanity-types';
 import { addRecentlyViewedBook } from '@/app/lib/recommendations';
@@ -109,6 +110,16 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
 
   // Image viewer states
   const [activeTab, setActiveTab] = React.useState<'contents' | 'preview'>('contents');
+  // Phones only: the image gallery starts closed so the book's details stay in view.
+  const [mobileGalleryOpen, setMobileGalleryOpen] = React.useState(false);
+  const openMobileGallery = (tab: 'contents' | 'preview') => {
+    if (mobileGalleryOpen && activeTab === tab) {
+      setMobileGalleryOpen(false);
+    } else {
+      setActiveTab(tab);
+      setMobileGalleryOpen(true);
+    }
+  };
   const [activePreviewIndex, setActivePreviewIndex] = React.useState<number>(0);
   const [activeViewportImageUrl, setActiveViewportImageUrl] = React.useState<string | null>(null);
 
@@ -150,6 +161,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
       setLoading(true);
       setActiveTab('contents');
       setActivePreviewIndex(0);
+      setMobileGalleryOpen(false);
       setActiveViewportImageUrl(null);
       setReviews([]);
       setUserReview(null);
@@ -330,9 +342,11 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
     })
   );
 
-  return (
+  // Rendered into <body> so no ancestor (transform, filter, animation fill, …) can
+  // become the containing block of this fixed overlay and push the sheet off-screen.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#1A1A1A]/60 backdrop-blur-sm overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#1A1A1A]/60 backdrop-blur-sm overflow-y-auto overflow-x-hidden"
       role="dialog"
       aria-modal="true"
       aria-label={`${book.title} — details`}
@@ -341,7 +355,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
     >
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson }} />
       {/* On mobile: full-screen sheet sliding up. On desktop: centered modal. */}
-      <div className="bg-[#FBFBFA] border-t sm:border border-[#1A1A1A]/15 w-full max-w-5xl rounded-t-2xl sm:rounded-sm shadow-2xl flex flex-col md:flex-row h-[95vh] sm:h-auto sm:max-h-[90vh] overflow-hidden text-[#1A1A1A]">
+      <div className="bg-[#FBFBFA] border-t sm:border border-[#1A1A1A]/15 w-full max-w-5xl rounded-t-2xl sm:rounded-sm shadow-2xl flex flex-col md:flex-row h-[92%] min-w-0 sm:h-auto sm:max-h-[90vh] overflow-hidden text-[#1A1A1A]">
 
         {/* ── Left: Image Viewport — hidden on mobile to save space ── */}
         <div className="hidden md:flex w-full md:w-3/5 bg-[#1A1A1A]/5 border-b md:border-b-0 md:border-r border-[#1A1A1A]/10 flex-col justify-between relative">
@@ -427,7 +441,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
         </div>
 
         {/* ── Right: Metadata, Pricing, Reviews, Related ── */}
-        <div className="w-full md:w-2/5 flex flex-col overflow-y-auto bg-[#FBFBFA]">
+        <div className="w-full min-w-0 md:w-2/5 flex flex-col overflow-y-auto overflow-x-hidden bg-[#FBFBFA]">
 
           {/* Mobile-only drag indicator (the gallery lives in the scrolling area below) */}
           <div className="md:hidden flex flex-col items-center pt-3 pb-1 flex-shrink-0">
@@ -437,29 +451,55 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
           {/* Scrollable content area */}
           <div className="flex-grow px-5 py-4 md:p-8 overflow-y-auto">
 
-            {/* Mobile gallery: cover, contents pages and "peek inside" (the desktop viewport is hidden below md) */}
+            {/* Mobile: a compact cover + two buttons keep the book's details in view; the
+                full gallery (cover, contents, peek inside) opens below them on demand.
+                The desktop viewport on the left is hidden below md. */}
             {(book.coverImage?.asset || hasContents || hasPreview) && (
-              <div className="md:hidden -mx-5 -mt-4 mb-5 border-b border-[#1A1A1A]/10 bg-[#1A1A1A]/5">
-                {hasPreview && (
-                  <div className="flex gap-1 p-2 font-sans text-[10px] font-bold uppercase tracking-wider">
+              <div className="md:hidden mb-5 flex items-center gap-4">
+                {book.coverImage?.asset && (
+                  <button
+                    onClick={() => openMobileGallery('contents')}
+                    aria-label="Open cover and contents"
+                    className="flex-shrink-0"
+                  >
+                    <img
+                      src={getImageUrl(book.coverImage, 240) || ''}
+                      alt={book.title}
+                      className="h-28 w-auto rounded-sm object-contain shadow-md"
+                    />
+                  </button>
+                )}
+                <div className="flex min-w-0 flex-1 flex-col gap-2 font-sans text-[10px] font-bold uppercase tracking-wider">
+                  <button
+                    onClick={() => openMobileGallery('contents')}
+                    className={`border px-3 py-2.5 text-left transition-colors ${mobileGalleryOpen && activeTab === 'contents' ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white' : 'border-[#7D5A34] text-[#7D5A34]'}`}
+                  >
+                    Cover &amp; Contents ({(book.coverImage?.asset ? 1 : 0) + validContentsImages.length})
+                  </button>
+                  {hasPreview && (
                     <button
-                      onClick={() => setActiveTab('contents')}
-                      className={`flex-1 border px-2 py-2 transition-colors ${activeTab === 'contents' ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white' : 'border-[#1A1A1A]/15 text-[#1A1A1A]/60'}`}
-                    >
-                      Cover &amp; Contents ({(book.coverImage?.asset ? 1 : 0) + validContentsImages.length})
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('preview')}
-                      className={`flex-1 border px-2 py-2 transition-colors ${activeTab === 'preview' ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white' : 'border-[#1A1A1A]/15 text-[#1A1A1A]/60'}`}
+                      onClick={() => openMobileGallery('preview')}
+                      className={`border px-3 py-2.5 text-left transition-colors ${mobileGalleryOpen && activeTab === 'preview' ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white' : 'border-[#7D5A34] text-[#7D5A34]'}`}
                     >
                       Peek Inside ({validPreviewImages.length})
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
+              </div>
+            )}
+
+            {mobileGalleryOpen && (book.coverImage?.asset || hasContents || hasPreview) && (
+              <div className="md:hidden -mx-5 mb-5 border-y border-[#1A1A1A]/10 bg-[#1A1A1A]/5">
+                <button
+                  onClick={() => setMobileGalleryOpen(false)}
+                  className="block w-full px-3 py-2 text-right font-sans text-[10px] font-bold uppercase tracking-wider text-[#1A1A1A]/60"
+                >
+                  Close ✕
+                </button>
 
                 {(activeTab === 'contents' || !hasPreview) && (
                   <>
-                    <div className="relative mx-auto mt-2 aspect-[3/4] w-full max-h-[58vh] bg-white">
+                    <div className="relative mx-auto mt-2 aspect-[3/4] w-full max-h-[50vh] bg-white">
                       {activeViewportImageUrl ? (
                         <ZoomableImage key={activeViewportImageUrl} src={activeViewportImageUrl} alt={`${book.title} — cover and contents`} />
                       ) : (
@@ -501,7 +541,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
 
                 {activeTab === 'preview' && hasPreview && (
                   <>
-                    <div className="relative mx-auto mt-2 aspect-[3/4] w-full max-h-[58vh] bg-white">
+                    <div className="relative mx-auto mt-2 aspect-[3/4] w-full max-h-[50vh] bg-white">
                       <ZoomableImage
                         key={`m-preview-${activePreviewIndex}`}
                         src={getImageUrl(validPreviewImages[activePreviewIndex], 1400) || ''}
@@ -771,6 +811,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

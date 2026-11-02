@@ -234,6 +234,12 @@ const heroSlides = useMemo<HeroSlide[]>(() => {
 }, [rankedRecommendations, featuredCollections, books, hasHistory]);
 
 const hasHeroSlides = heroSlides.length > 0;
+
+  // Books tagged with the "New Arrivals" category in Studio.
+  const newArrivals = useMemo(
+    () => books.filter((b) => b.categories?.some((c) => c?.slug === 'new-arrivals')).slice(0, FOR_YOU_LIMIT),
+    [books]
+  );
   const addToCart = (book: Book) => {
     let updatedCart: CartItem[];
     const priced = customerPrice(book.price, book.originalPrice, discountRate);
@@ -464,6 +470,22 @@ const hasHeroSlides = heroSlides.length > 0;
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-4 md:pt-10 lg:pt-12 pb-12 flex flex-col lg:flex-row gap-8 lg:gap-12">
 
         <div className="flex-grow lg:max-w-[72%]">
+
+          {/* ── New Arrivals ── books tagged "New Arrivals" in Studio; sits above the personalised row ── */}
+          {!loading && newArrivals.length > 0 && (
+            <div className="mb-10 md:mb-14">
+              <div className="flex items-end justify-between border-b border-[#1A1A1A]/10 pb-3 md:pb-4 mb-6 md:mb-8">
+                <div>
+                  <span className="font-sans text-[9px] uppercase tracking-[0.25em] font-bold text-[#7D5A34] block mb-1">Just Published</span>
+                  <h3 className="text-xl md:text-2xl font-bold">New Arrivals</h3>
+                </div>
+                <Link href="/books" className="font-sans text-[10px] uppercase tracking-wider underline text-[#1A1A1A]/60 hover:text-[#7D5A34] flex-shrink-0">Browse catalogue</Link>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {newArrivals.map((b) => renderBookCard(b))}
+              </div>
+            </div>
+          )}
 
           {/* ── For You ── shown only when history produces results ── */}
           {!loading && hasRecommendations && (

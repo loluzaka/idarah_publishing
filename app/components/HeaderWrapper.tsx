@@ -238,14 +238,14 @@ export default function HeaderWrapper() {
         </div>
 
         {/* Always-visible page links, so nobody has to find the ☰ to discover the shop. */}
-        <nav aria-label="Main" className="-mx-4 mt-2 flex items-center justify-between gap-1 overflow-x-auto border-t border-[#1A1A1A]/10 px-3 pt-2 font-sans [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {NAV_LINKS.map(({ href, label }) => {
+        <nav aria-label="Main" className="-mx-4 mt-2 flex items-center justify-between gap-0.5 overflow-x-auto border-t border-[#1A1A1A]/10 px-3 pt-2 font-sans [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {NAV_LINKS.filter(({ href }) => href !== '/about').map(({ href, label }) => {
             const isActive = isActivePath(pathname, href);
             const short = label.replace(/ Us$/, '');
             if (href === '/books') {
               return (
                 <Link key={href} href={href} aria-current={isActive ? 'page' : undefined}
-                  className={`nav-cta inline-flex flex-shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${
+                  className={`nav-cta inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide ${
                     isActive ? 'bg-[#7D5A34] text-white' : 'bg-[#1A1A1A] text-[#F5E6C8]'
                   }`}>
                   {label}
@@ -255,7 +255,7 @@ export default function HeaderWrapper() {
             }
             return (
               <Link key={href} href={href} aria-current={isActive ? 'page' : undefined}
-                className={`flex-shrink-0 border-b-2 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                className={`flex-shrink-0 border-b-2 px-1.5 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
                   isActive ? 'border-[#7D5A34] text-[#7D5A34]' : 'border-transparent text-[#1A1A1A]/70'
                 }`}>
                 {short}
