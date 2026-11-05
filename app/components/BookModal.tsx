@@ -549,6 +549,11 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                         })}
                       </div>
                     )}
+                    {((book.coverImage?.asset ? 1 : 0) + validContentsImages.length) > 1 && (
+                      <p className="px-3 pb-3 text-center font-sans text-[10px] text-[#1A1A1A]/50">
+                        Slide left or right on the page to change page
+                      </p>
+                    )}
                   </>
                 )}
 
@@ -571,6 +576,11 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                       <span className="text-[11px] font-semibold text-[#1A1A1A]/60">{activePreviewIndex + 1} of {validPreviewImages.length}</span>
                       <button disabled={activePreviewIndex === validPreviewImages.length - 1} onClick={() => setActivePreviewIndex(p => p + 1)} className="border border-[#1A1A1A]/20 px-3 py-2 text-[10px] font-bold uppercase tracking-widest disabled:pointer-events-none disabled:opacity-30">Next →</button>
                     </div>
+                    {validPreviewImages.length > 1 && (
+                      <p className="px-3 pb-3 text-center font-sans text-[10px] text-[#1A1A1A]/50">
+                        Slide left or right on the page to change page
+                      </p>
+                    )}
                   </>
                 )}
               </div>
