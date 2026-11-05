@@ -133,6 +133,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
   // Wishlist
   const [wishlisted, setWishlisted] = React.useState(false);
   const [wishlistLoading, setWishlistLoading] = React.useState(false);
+  const [wishlistNeedsLogin, setWishlistNeedsLogin] = React.useState(false);
 
   // Related books
   const [relatedBooks, setRelatedBooks] = React.useState<RelatedBook[]>([]);
@@ -237,7 +238,8 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
           setRelatedBooks(related ?? []);
 
           // Wishlist status
-          isWishlisted(user?.uid ?? null, data._id).then(v => setWishlisted(v)).catch(() => {});
+          if (user?.uid) isWishlisted(user.uid, data._id).then(v => setWishlisted(v)).catch(() => {});
+          else setWishlisted(false);
 
           // Approved reviews
           getApprovedReviews(data._id).then(r => setReviews(r)).catch(() => {});
@@ -267,13 +269,18 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
   // ── Wishlist toggle ──────────────────────────────────────────────────────
   const handleWishlistToggle = async () => {
     if (!book || wishlistLoading) return;
+    // Wishlists belong to an account: signed-out visitors are asked to sign in.
+    if (!user) {
+      setWishlistNeedsLogin(true);
+      return;
+    }
     setWishlistLoading(true);
     try {
       if (wishlisted) {
-        await removeFromWishlist(user?.uid ?? null, book._id);
+        await removeFromWishlist(user.uid, book._id);
         setWishlisted(false);
       } else {
-        await addToWishlist(user?.uid ?? null, book._id);
+        await addToWishlist(user.uid, book._id);
         setWishlisted(true);
       }
     } catch {
@@ -643,6 +650,12 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
               </div>
             </div>
 
+            {wishlistNeedsLogin && !user && (
+              <p className="-mt-3 mb-5 font-sans text-[11px] text-[#7D5A34]">
+                Please <a href="/login" className="font-bold underline">sign in</a> to save books to your wishlist.
+              </p>
+            )}
+
             {/* Categories */}
             {book.categories && book.categories.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-6">
@@ -761,7 +774,10 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                       )}
                     </form>
                   ) : (
-                    <p className="font-sans text-[10px] text-[#1A1A1A]/50 italic">Sign in to leave a review.</p>
+                    <p className="font-sans text-[11px] text-[#1A1A1A]/60">
+                      Only signed-in readers can leave a review.{' '}
+                      <a href="/login" className="font-bold text-[#7D5A34] underline">Sign in</a>
+                    </p>
                   )}
 
                   {/* Approved reviews list */}

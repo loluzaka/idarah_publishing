@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   getAuth,
@@ -8,11 +8,34 @@ import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   updateProfile,
+  type User,
 } from 'firebase/auth';
-import { createUserProfile, ACCOUNT_TYPES, AccountType } from '@/app/lib/userProfile';
+import { createUserProfile, getUserProfile, ACCOUNT_TYPES, AccountType } from '@/app/lib/userProfile';
 
 interface CartLine { id: string; quantity: number }
+
+// Turn Firebase's error codes into something a customer can act on.
+function friendlyAuthError(err: unknown): string {
+  const code = (err as { code?: string })?.code;
+  switch (code) {
+    case 'auth/popup-closed-by-user':
+    case 'auth/cancelled-popup-request':
+      return 'The Google window was closed before sign-in finished. Please try again.';
+    case 'auth/popup-blocked':
+      return 'Your browser blocked the Google sign-in window. Allow pop-ups for this site and try again.';
+    case 'auth/unauthorized-domain':
+      return 'Google sign-in is not enabled for this web address yet. Please contact us.';
+    case 'auth/operation-not-allowed':
+      return 'Google sign-in is not switched on for this site yet. Please contact us.';
+    case 'auth/network-request-failed':
+      return 'Network problem. Check your connection and try again.';
+    default:
+      return (err instanceof Error ? err.message : 'Something went wrong. Please try again.').replace('Firebase:', '');
+  }
+}
 
 // Official multi-colour Google "G" mark.
 function GoogleGLogo({ className = 'w-4 h-4' }: { className?: string }) {
@@ -92,21 +115,56 @@ export default function LoginPage() {
     }
   };
 
+  // Shared by the popup and redirect flows once Google has signed the user in.
+  const finishGoogleSignIn = async (user: User) => {
+    // Only create the profile for a first-time Google user. Writing it on every
+    // sign-in would reset an existing account's type, verification and discount.
+    // A profile problem must not block the sign-in itself.
+    try {
+      if (!(await getUserProfile(user.uid))) {
+        await createUserProfile({
+          uid: user.uid,
+          name: user.displayName ?? '',
+          email: user.email ?? '',
+          accountType: 'regular',
+        });
+      }
+    } catch (err) {
+      console.warn('Could not create user profile after Google sign-in:', err);
+    }
+    mergeGuestCartToAccount(user.uid);
+    router.push('/books');
+  };
+
+  // Coming back from the redirect fallback below: complete the sign-in.
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => { if (result?.user) return finishGoogleSignIn(result.user); })
+      .catch((err) => setError(friendlyAuthError(err)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleGoogleAuth = async () => {
     setError('');
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
     try {
       const result = await signInWithPopup(auth, provider);
-      await createUserProfile({
-        uid: result.user.uid,
-        name: result.user.displayName ?? '',
-        email: result.user.email ?? '',
-        accountType: 'regular',
-      });
-      mergeGuestCartToAccount(result.user.uid);
-      router.push('/books');
+      await finishGoogleSignIn(result.user);
     } catch (err) {
-      setError((err instanceof Error ? err.message : 'Something went wrong. Please try again.').replace('Firebase:', ''));
+      const code = (err as { code?: string }).code;
+      // Browsers that block or can't run popups (some phones / in-app browsers):
+      // fall back to a full-page redirect.
+      if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+        try {
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectErr) {
+          setError(friendlyAuthError(redirectErr));
+          return;
+        }
+      }
+      setError(friendlyAuthError(err));
     }
   };
 

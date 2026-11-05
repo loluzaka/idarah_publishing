@@ -5,6 +5,16 @@
   NODE_VERSION = "22"
   AWS_LAMBDA_JS_RUNTIME = "nodejs22.x"
 
+# Google / Firebase sign-in. NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN is idarahbooks.in, so
+# the sign-in popup opens https://idarahbooks.in/__/auth/handler. Netlify has no such
+# page, so proxy it to the Firebase-hosted handler. (A root-level _redirects file is
+# not read for a Next.js site - only rules declared here are guaranteed to apply.)
+[[redirects]]
+  from = "/__/auth/*"
+  to = "https://iadsite-d75c7.firebaseapp.com/__/auth/:splat"
+  status = 200
+  force = true
+
 # Fingerprinted build output never changes -> cache for a year.
 [[headers]]
   for = "/_next/static/*"
