@@ -14,9 +14,13 @@ const clamp = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
 interface Point { x: number; y: number }
 
+const SWIPE_MIN_PX = 50;
+
 interface ZoomableImageProps {
   src: string;
   alt: string;
+  /** When given, a horizontal swipe on the un-zoomed image asks for the next/previous page. */
+  onSwipe?: (direction: "next" | "prev") => void;
 }
 
 // An image that fills its parent and can be zoomed AND panned:
@@ -27,7 +31,7 @@ interface ZoomableImageProps {
 // The parent must give it a definite height (it is absolutely positioned inside
 // a relative box that fills the parent). Remount with a new `key` per image to
 // reset the zoom.
-export default function ZoomableImage({ src, alt }: ZoomableImageProps) {
+export default function ZoomableImage({ src, alt, onSwipe }: ZoomableImageProps) {
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1); // latest zoom, readable from event handlers
   const scroller = useRef<HTMLDivElement>(null);
@@ -150,6 +154,16 @@ export default function ZoomableImage({ src, alt }: ZoomableImageProps) {
       }
     }
 
+    // A clear sideways flick on the un-zoomed image turns the page.
+    const d = drag.current;
+    if (onSwipe && e.type === "pointerup" && d && zoomRef.current === 1 && moved.current !== Infinity) {
+      const dx = e.clientX - d.x;
+      const dy = e.clientY - d.y;
+      if (Math.abs(dx) >= SWIPE_MIN_PX && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        onSwipe(dx < 0 ? "next" : "prev");
+      }
+    }
+
     // Lifting one finger of a pinch: carry on panning with the other.
     const rest = [...pointers.current.values()][0];
     drag.current =
@@ -199,7 +213,11 @@ export default function ZoomableImage({ src, alt }: ZoomableImageProps) {
       </div>
 
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 bg-[#1A1A1A]/80 text-[#FBFBFA] text-[9px] uppercase tracking-widest px-2 py-1 pointer-events-none whitespace-nowrap">
-        {zoom > 1 ? `${Math.round(zoom * 100)}% · drag to move` : "Double-click or pinch to zoom"}
+        {zoom > 1
+          ? `${Math.round(zoom * 100)}% · drag to move`
+          : onSwipe
+            ? "Swipe to turn page · pinch to zoom"
+            : "Double-click or pinch to zoom"}
       </div>
     </div>
   );

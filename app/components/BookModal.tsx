@@ -501,7 +501,20 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                   <>
                     <div className="relative mx-auto mt-2 aspect-[3/4] w-full max-h-[50vh] bg-white">
                       {activeViewportImageUrl ? (
-                        <ZoomableImage key={activeViewportImageUrl} src={activeViewportImageUrl} alt={`${book.title} — cover and contents`} />
+                        <ZoomableImage
+                          key={activeViewportImageUrl}
+                          src={activeViewportImageUrl}
+                          alt={`${book.title} — cover and contents`}
+                          onSwipe={(dir) => {
+                            // Cover first, then each contents page.
+                            const urls = [
+                              book.coverImage?.asset ? getImageUrl(book.coverImage) : null,
+                              ...validContentsImages.map((img) => getImageUrl(img)),
+                            ].filter((u): u is string => !!u);
+                            const next = urls.indexOf(activeViewportImageUrl) + (dir === 'next' ? 1 : -1);
+                            if (next >= 0 && next < urls.length) setActiveViewportImageUrl(urls[next]);
+                          }}
+                        />
                       ) : (
                         <div className="flex h-full items-center justify-center">
                           <span className="font-serif text-5xl font-bold opacity-20">{book.coverPlaceholder || 'IAD'}</span>
@@ -546,6 +559,11 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                         key={`m-preview-${activePreviewIndex}`}
                         src={getImageUrl(validPreviewImages[activePreviewIndex], 1400) || ''}
                         alt={`Preview page ${activePreviewIndex + 1}`}
+                        onSwipe={(dir) =>
+                          setActivePreviewIndex((p) =>
+                            Math.min(validPreviewImages.length - 1, Math.max(0, p + (dir === 'next' ? 1 : -1)))
+                          )
+                        }
                       />
                     </div>
                     <div className="flex items-center justify-between px-3 py-3 font-sans">
