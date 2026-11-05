@@ -94,6 +94,15 @@ select:focus-visible,
 }
 
 
+/* Book popup on phones: a slim scrollbar that stays visible (phones normally hide it
+   until you scroll), so it is obvious the card has more below. Only ::-webkit-scrollbar
+   is used on purpose - setting scrollbar-width/color would make Chrome ignore it. */
+@media (max-width: 767px) {
+  .modal-scroll::-webkit-scrollbar { width: 5px; }
+  .modal-scroll::-webkit-scrollbar-track { background: rgba(26,26,26,0.06); }
+  .modal-scroll::-webkit-scrollbar-thumb { background: rgba(125,90,52,0.6); border-radius: 3px; }
+}
+
 /* ── Header: catalogue call-to-action ─────────────────────────────────────── */
 
 /* A soft gold glint sweeps across the Catalogue pill every few seconds. */

@@ -120,6 +120,13 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
       setMobileGalleryOpen(true);
     }
   };
+  // Phones: show a "scroll for more" cue while the details area has more below it.
+  const scrollAreaRef = React.useRef<HTMLDivElement>(null);
+  const [moreBelow, setMoreBelow] = React.useState(false);
+  const updateMoreBelow = React.useCallback(() => {
+    const el = scrollAreaRef.current;
+    setMoreBelow(!!el && el.scrollHeight - el.scrollTop - el.clientHeight > 24);
+  }, []);
   const [activePreviewIndex, setActivePreviewIndex] = React.useState<number>(0);
   const [activeViewportImageUrl, setActiveViewportImageUrl] = React.useState<string | null>(null);
 
@@ -301,6 +308,18 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
     }
   };
 
+  // Re-check whether there is more to scroll to whenever the content's size changes
+  // (images loading, gallery opening, reviews expanding...). The observer also fires
+  // once on observe, which gives the initial value.
+  React.useEffect(() => {
+    const el = scrollAreaRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(updateMoreBelow);
+    ro.observe(el);
+    Array.from(el.children).forEach((child) => ro.observe(child));
+    return () => ro.disconnect();
+  }, [book, loading, updateMoreBelow]);
+
   // ── Loading / empty guards ───────────────────────────────────────────────
   if (loading) {
     return (
@@ -449,7 +468,7 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
           </div>
 
           {/* Scrollable content area */}
-          <div className="flex-grow px-5 py-4 md:p-8 overflow-y-auto">
+          <div ref={scrollAreaRef} onScroll={updateMoreBelow} className="modal-scroll flex-grow px-5 py-4 md:p-8 overflow-y-auto">
 
             {/* Mobile: a compact cover + two buttons keep the book's details in view; the
                 full gallery (cover, contents, peek inside) opens below them on demand.
@@ -801,6 +820,21 @@ export default function BookModal({ bookId, onClose, onAddToCart }: BookModalPro
                   })}
                 </div>
               </div>
+            )}
+          </div>
+
+          {/* Phones: "more below" cue, floating just above the price bar. Zero-height
+              wrapper so it never takes layout space; only the pill takes taps. */}
+          <div className="md:hidden relative h-0 flex-shrink-0 z-10 pointer-events-none">
+            {moreBelow && (
+              <button
+                type="button"
+                onClick={() => scrollAreaRef.current?.scrollBy({ top: scrollAreaRef.current.clientHeight * 0.8, behavior: 'smooth' })}
+                className="pointer-events-auto absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full bg-[#1A1A1A]/85 px-3.5 py-1.5 font-sans text-[10px] font-bold uppercase tracking-widest text-white shadow-lg"
+              >
+                Scroll for more details
+                <span aria-hidden="true" className="animate-bounce">↓</span>
+              </button>
             )}
           </div>
 
